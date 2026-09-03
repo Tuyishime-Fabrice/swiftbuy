@@ -1,78 +1,119 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import { FormField } from '../components/UI'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import AuthLayout from '../layouts/AuthLayout'
+import { Field, SubmitButton, InlineNotice } from '../components/UI'
+import { useAuth } from '../context/auth-context'
+import { useToast } from '../context/toast-context'
+import { homeFor } from '../lib/routes'
+import { validateEmail, collectErrors } from '../utils/validation'
+import * as Icon from '../components/Icons'
 
 export default function Login() {
-  const { login } = useAuth()
-  const { toast } = useToast()
+  const { signIn } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [formError, setFormError] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [showPass, setShowPass] = useState(false)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!email || !password) return toast('Please fill in all fields', 'error')
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setFormError(null)
+
+    const found = collectErrors({
+      email: validateEmail(email),
+      password: password ? null : 'Password is required',
+    })
+    setErrors(found)
+    if (Object.keys(found).length > 0) return
+
     setLoading(true)
-    const result = await login(email, password)
+    const result = await signIn(email, password)
     setLoading(false)
-    if (!result.success) return toast(result.message, 'error')
-    toast('Welcome back!', 'success')
-    if (result.role === 'superadmin' || result.role === 'admin') navigate('/admin')
-    else if (result.role === 'seller') navigate('/seller')
-    else navigate('/')
+
+    if (!result.ok) {
+      setFormError(result.message)
+      return
+    }
+
+    toast.success(`Welcome back, ${result.user.name.split(' ')[0]}`)
+    // Return them to wherever the guard interrupted, or to their home surface.
+    const destination = location.state?.from ?? homeFor(result.user.role)
+    navigate(destination, { replace: true })
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 420 }} className="fade-up">
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 32, height: 32, background: 'var(--accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-            </div>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: 'var(--accent)' }}>SwiftBuy</span>
+    <AuthLayout
+      title="Sign in"
+      subtitle="Welcome back to SwiftBuy"
+      footer={
+        <>
+          New to SwiftBuy?{' '}
+          <Link to="/register" style={{ color: 'var(--accent-soft)', fontWeight: 600 }}>
+            Create an account
           </Link>
-          <p style={{ color: 'var(--text3)', fontSize: 14, marginTop: 10 }}>Sign in to your account</p>
-        </div>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {formError && <InlineNotice tone="danger" title="Could not sign in">{formError}</InlineNotice>}
 
-        <div className="card" style={{ padding: 32 }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <FormField label="Email address">
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="input" autoComplete="email" />
-            </FormField>
-            <FormField label="Password">
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPass ? 'text' : 'password'} value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Your password" className="input" autoComplete="current-password"
-                  style={{ paddingRight: 44 }}
-                />
-                <button type="button" onClick={() => setShowPass(s => !s)}
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 13, fontFamily: 'inherit', fontWeight: 600 }}>
-                  {showPass ? 'Hide' : 'Show'}
-                </button>
-              </div>
-            </FormField>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Link to="/forgot-password" style={{ color: 'var(--accent-light)', fontSize: 13 }}>Forgot password?</Link>
-            </div>
-            <button type="submit" disabled={loading} className="btn btn-primary" style={{ padding: '13px', fontSize: 15, marginTop: 4 }}>
-              {loading ? 'Signing in...' : 'Sign In'}
+        <Field label="Email address" error={errors.email} htmlFor="login-email">
+          <input
+            id="login-email"
+            className="input"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            aria-invalid={errors.email ? 'true' : undefined}
+          />
+        </Field>
+
+        <Field label="Password" error={errors.password} htmlFor="login-password">
+          <div style={{ position: 'relative' }}>
+            <input
+              id="login-password"
+              className="input"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              style={{ paddingRight: 46 }}
+              aria-invalid={errors.password ? 'true' : undefined}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{
+                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                width: 34, height: 34, display: 'grid', placeItems: 'center',
+                color: 'var(--text-subtle)', borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              {showPassword ? <Icon.Moon size={16} /> : <Icon.Sun size={16} />}
             </button>
-          </form>
-          <p style={{ textAlign: 'center', marginTop: 22, color: 'var(--text3)', fontSize: 14 }}>
-            Don't have an account? <Link to="/register" style={{ color: 'var(--accent-light)', fontWeight: 600 }}>Register</Link>
-          </p>
+          </div>
+        </Field>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Link to="/forgot-password" style={{ color: 'var(--accent-soft)', fontSize: '0.875rem' }}>
+            Forgot your password?
+          </Link>
         </div>
 
-      </div>
-    </div>
+        <SubmitButton loading={loading} loadingLabel="Signing in…" className="btn btn-primary btn-block">
+          Sign in
+        </SubmitButton>
+      </form>
+    </AuthLayout>
   )
 }

@@ -1,327 +1,483 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import { ProductService, CartService, WishlistService, ReviewService } from '../services/storage'
+import { motion, AnimatePresence } from 'framer-motion'
+import PageShell from '../layouts/PageShell'
+import {
+  EmptyState, ErrorState, Rating, QuantityStepper, InlineNotice,
+} from '../components/UI'
+import { ProductCard } from '../components/ProductCard'
+import * as Icon from '../components/Icons'
+import { useAuth } from '../context/auth-context'
+import { useToast } from '../context/toast-context'
+import { ProductService } from '../services/products'
+import { CartService, WishlistService, ReviewService } from '../services/commerce'
+import { ChatService } from '../services/messaging'
+import { productImageUrl } from '../lib/supabase'
+import { formatRwf, formatDate, stockState, STOCK_LABEL, initials } from '../utils/format'
+import { fadeIn, listContainer, DURATION, EASE } from '../lib/motion'
+import { useAsyncData } from '../hooks/useAsyncData'
 
-const fmt = (n) => `RWF ${Number(n).toLocaleString()}`
+/**
+ * The product page.
+ *
+ * Everything on it is real: the gallery comes from Storage, the rating is the
+ * cached average of verified reviews, and the review list is read-only here —
+ * a review can only be written from a delivered order, so the write path lives
+ * on the orders page rather than behind a "write a review" button anyone can
+ * press.
+ */
+export default function ProductDetail() {
+  const { id } = useParams()
+  const { user, isCustomer } = useAuth()
+  const toast = useToast()
+  const navigate = useNavigate()
 
-function StarRow({ rating, size = 16, interactive = false, onRate }) {
+  // Gallery and quantity are stamped with the product they belong to, so
+  // navigating to a different product resets them by derivation rather than
+  // by an effect that writes state after the render.
+  const [selection, setSelection] = useState({ productId: null, image: 0, qty: 1 })
+  const activeImage = selection.productId === id ? selection.image : 0
+  const qty = selection.productId === id ? selection.qty : 1
+  const setActiveImage = (image) => setSelection({ productId: id, image, qty })
+  const setQty = (next) => setSelection({ productId: id, image: activeImage, qty: next })
+
+  const [wishlisted, setWishlisted] = useState(false)
+  const [adding, setAdding] = useState(false)
+
+  const { status, data, error, retry } = useAsyncData(
+    useCallback(async () => {
+      const found = await ProductService.getById(id)
+      if (!found) return { product: null, reviews: [], related: [] }
+
+      const [reviewList, relatedList] = await Promise.all([
+        ReviewService.listForProduct(id),
+        found.category
+          ? ProductService.search({ category: found.category, pageSize: 5 })
+          : Promise.resolve({ items: [] }),
+      ])
+
+      return {
+        product: found,
+        reviews: reviewList,
+        related: relatedList.items.filter((p) => p.id !== id).slice(0, 4),
+      }
+    }, [id])
+  )
+
+  const product = data?.product ?? null
+  const reviews = data?.reviews ?? []
+  const related = data?.related ?? []
+  // A delisted product, or one whose store is no longer approved, returns no
+  // row under RLS rather than an error.
+  const missing = status === 'ready' && !product
+
+  useEffect(() => {
+    if (!user || !isCustomer || !product) return
+    WishlistService.ids(user.id).then((ids) => setWishlisted(ids.has(product.id)))
+  }, [user, isCustomer, product])
+
+  const addToCart = async () => {
+    if (!user) return navigate('/login', { state: { from: `/product/${id}` } })
+    if (!isCustomer) return toast.info('Switch to a customer account to shop.')
+
+    setAdding(true)
+    try {
+      await CartService.add(user.id, product.id, qty)
+      toast.success(`${qty} × ${product.name} added to your cart`)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const toggleWishlist = async () => {
+    if (!user) return navigate('/login', { state: { from: `/product/${id}` } })
+    if (!isCustomer) return toast.info('Switch to a customer account to save products.')
+    try {
+      const saved = await WishlistService.toggle(user.id, product.id)
+      setWishlisted(saved)
+      toast.info(saved ? 'Saved to your wishlist' : 'Removed from your wishlist')
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
+  const messageSeller = async () => {
+    if (!user) return navigate('/login', { state: { from: `/product/${id}` } })
+    if (!isCustomer) return toast.info('Only customers can message a store.')
+    try {
+      const conversationId = await ChatService.openWithSeller(product.sellerId)
+      navigate(`/messages/${conversationId}`)
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
+  if (status === 'loading') {
+    return (
+      <PageShell title="Loading product">
+        <ProductDetailSkeleton />
+      </PageShell>
+    )
+  }
+
+  if (missing) {
+    return (
+      <PageShell title="Product not found">
+        <EmptyState
+          icon={Icon.Package}
+          title="This product is no longer available"
+          description="It may have been delisted, or its store may no longer be active."
+          action={<Link to="/" className="btn btn-primary">Back to the shop</Link>}
+        />
+      </PageShell>
+    )
+  }
+
+  if (status === 'error') {
+    return (
+      <PageShell title="Product">
+        <ErrorState title="We couldn't load this product" description={error} onRetry={retry} />
+      </PageShell>
+    )
+  }
+
+  const state = stockState(product.stock)
+  const images = product.images.length > 0 ? product.images : [null]
+
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {[1,2,3,4,5].map(s => (
-        <span
-          key={s}
-          onClick={() => interactive && onRate && onRate(s)}
-          style={{
-            fontSize: size, cursor: interactive ? 'pointer' : 'default',
-            color: s <= rating ? '#f0a500' : 'var(--border2)', lineHeight: 1,
-          }}
-        >★</span>
-      ))}
+    <PageShell title={product.name}>
+      <nav aria-label="Breadcrumb" style={{ marginBottom: 20 }}>
+        <ol style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.8125rem', flexWrap: 'wrap' }}>
+          <li><Link to="/" style={{ color: 'var(--accent-soft)' }}>Shop</Link></li>
+          {product.category && (
+            <>
+              <li aria-hidden="true" style={{ color: 'var(--text-subtle)' }}>/</li>
+              <li>
+                <Link to={`/?category=${encodeURIComponent(product.category)}`} style={{ color: 'var(--accent-soft)' }}>
+                  {product.category}
+                </Link>
+              </li>
+            </>
+          )}
+          <li aria-hidden="true" style={{ color: 'var(--text-subtle)' }}>/</li>
+          <li style={{ color: 'var(--text-muted)' }}>{product.name}</li>
+        </ol>
+      </nav>
+
+      <div
+        style={{
+          display: 'grid', gap: 'clamp(20px, 4vw, 40px)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+          marginBottom: 48,
+        }}
+      >
+        <Gallery
+          images={images}
+          activeIndex={activeImage}
+          onSelect={setActiveImage}
+          alt={product.name}
+        />
+
+        <div>
+          {product.isFeatured && (
+            <span className="badge badge-warning" style={{ marginBottom: 10 }}>Featured</span>
+          )}
+
+          <h1 style={{ marginBottom: 8 }}>{product.name}</h1>
+
+          {product.ratingCount > 0 ? (
+            <div style={{ marginBottom: 14 }}>
+              <Rating value={product.rating} count={product.ratingCount} size={16} />
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-subtle)', fontSize: '0.875rem', marginBottom: 14 }}>
+              No reviews yet
+            </p>
+          )}
+
+          <p
+            style={{
+              fontFamily: "'Syne', sans-serif", fontSize: '1.85rem', fontWeight: 700,
+              color: 'var(--accent-soft)', marginBottom: 14, letterSpacing: '-0.02em',
+            }}
+          >
+            {formatRwf(product.price)}
+          </p>
+
+          <span
+            className={
+              state === 'out_of_stock' ? 'badge badge-danger'
+                : state === 'low_stock' ? 'badge badge-warning'
+                : 'badge badge-success'
+            }
+          >
+            {STOCK_LABEL[state]}
+          </span>
+
+          <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, margin: '20px 0 24px' }}>
+            {product.description || 'The seller has not added a description for this product yet.'}
+          </p>
+
+          {product.store && (
+            <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+              <span
+                style={{
+                  width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--accent)', color: '#fff', display: 'grid',
+                  placeItems: 'center', fontWeight: 700, fontSize: '0.8125rem',
+                }}
+              >
+                {initials(product.store.name)}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem' }}>Sold by</p>
+                <Link
+                  to={`/store/${product.sellerId}`}
+                  style={{ color: 'var(--accent-soft)', fontWeight: 600, fontSize: '0.9375rem' }}
+                >
+                  {product.store.name}
+                </Link>
+                {product.store.status === 'approved' && (
+                  <p style={{ color: 'var(--success)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Icon.Shield size={12} /> Reviewed by SwiftBuy
+                  </p>
+                )}
+              </div>
+              {isCustomer && (
+                <button type="button" className="btn btn-outline btn-sm" onClick={messageSeller}>
+                  <Icon.Chat size={15} /> Message
+                </button>
+              )}
+            </div>
+          )}
+
+          {state !== 'out_of_stock' ? (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <QuantityStepper value={qty} max={product.stock} onChange={setQty} />
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={addToCart}
+                disabled={adding}
+                style={{ flex: '1 1 180px' }}
+              >
+                {adding ? <span className="spinner" aria-hidden="true" /> : <Icon.Cart size={17} />}
+                {adding ? 'Adding…' : 'Add to cart'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={toggleWishlist}
+                aria-pressed={wishlisted}
+                aria-label={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+                style={{ width: 46, padding: 0, color: wishlisted ? 'var(--danger)' : undefined }}
+              >
+                {wishlisted ? <Icon.HeartFilled size={18} /> : <Icon.Heart size={18} />}
+              </button>
+            </div>
+          ) : (
+            <InlineNotice tone="warning" title="Out of stock">
+              This product is currently unavailable. Save it to your wishlist and check back.
+            </InlineNotice>
+          )}
+
+          {!user && (
+            <p style={{ color: 'var(--text-subtle)', fontSize: '0.875rem', marginTop: 14 }}>
+              <Link to="/login" style={{ color: 'var(--accent-soft)' }}>Sign in</Link> to add this to your cart.
+            </p>
+          )}
+
+          <ul
+            style={{
+              display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 22,
+              color: 'var(--text-subtle)', fontSize: '0.8125rem',
+            }}
+          >
+            <li style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Icon.Receipt size={14} /> Total calculated at checkout
+            </li>
+            <li style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Icon.Truck size={14} /> Delivery tracked per seller
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <Reviews reviews={reviews} rating={product.rating} count={product.ratingCount} />
+
+      {related.length > 0 && (
+        <section style={{ marginTop: 48 }} aria-labelledby="related">
+          <h2 id="related" style={{ marginBottom: 16 }}>More in {product.category}</h2>
+          <motion.div className="grid-products" variants={listContainer} initial="initial" animate="animate">
+            {related.map((p) => <ProductCard key={p.id} product={p} />)}
+          </motion.div>
+        </section>
+      )}
+    </PageShell>
+  )
+}
+
+// ── Gallery ─────────────────────────────────────────────────────────────────
+
+function Gallery({ images, activeIndex, onSelect, alt }) {
+  const active = images[activeIndex]
+  const src = productImageUrl(active?.storage_path, { width: 900 })
+
+  return (
+    <div>
+      <div
+        style={{
+          aspectRatio: '1', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+          border: '1px solid var(--border)', background: 'var(--bg-sunk)',
+          display: 'grid', placeItems: 'center',
+        }}
+      >
+        <AnimatePresence mode="wait">
+          {src ? (
+            <motion.img
+              key={active.id}
+              {...fadeIn}
+              src={src}
+              alt={active.alt_text || alt}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', color: 'var(--text-subtle)' }}>
+              <Icon.Image size={36} />
+              <p style={{ fontSize: '0.8125rem', marginTop: 8 }}>No photo yet</p>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {images.length > 1 && (
+        <div className="scroll-x" style={{ marginTop: 10 }}>
+          <div style={{ display: 'inline-flex', gap: 8, minWidth: 'max-content', paddingBottom: 2 }}>
+            {images.map((image, index) => (
+              <button
+                key={image.id}
+                type="button"
+                onClick={() => onSelect(index)}
+                aria-label={`Show image ${index + 1} of ${images.length}`}
+                aria-current={index === activeIndex}
+                style={{
+                  width: 62, height: 62, borderRadius: 'var(--radius-sm)', overflow: 'hidden',
+                  border: `2px solid ${index === activeIndex ? 'var(--accent)' : 'var(--border)'}`,
+                  background: 'var(--bg-sunk)', flexShrink: 0,
+                  transition: `border-color ${DURATION.fast}s ${EASE}`,
+                }}
+              >
+                <img
+                  src={productImageUrl(image.storage_path, { width: 140 })}
+                  alt=""
+                  loading="lazy"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export default function ProductDetail() {
-  const { id } = useParams()
-  const { user } = useAuth()
-  const { toast } = useToast()
-  const navigate = useNavigate()
+// ── Reviews ─────────────────────────────────────────────────────────────────
 
-  const [product, setProduct] = useState(null)
-  const [reviews, setReviews] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [inWishlist, setInWishlist] = useState(false)
-  const [qty, setQty] = useState(1)
-
-  // Review form
-  const [showReview, setShowReview] = useState(false)
-  const [rating, setRating] = useState(5)
-  const [comment, setComment] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    load()
-  }, [id])
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const p = await ProductService.getById(id)
-      if (!p) { navigate('/'); return }
-      setProduct(p)
-      document.title = `${p.name} — SwiftBuy Rwanda`
-
-      const r = await ReviewService.getByProduct(id)
-      setReviews(r)
-
-      if (user) {
-        const wl = await WishlistService.get(user.id)
-        setInWishlist(Array.isArray(wl) ? wl.some(w => String(w.id) === String(id)) : false)
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const addToCart = async () => {
-    if (!user) return navigate('/login')
-    if (user.role !== 'user') return toast('Only customers can add to cart', 'error')
-    try {
-      for (let i = 0; i < qty; i++) await CartService.add(product, user.id)
-      toast(`${product.name} added to cart`, 'success')
-    } catch { toast('Could not add to cart', 'error') }
-  }
-
-  const toggleWish = async () => {
-    if (!user) return navigate('/login')
-    try {
-      const added = await WishlistService.toggle(product, user.id)
-      setInWishlist(typeof added === 'boolean' ? added : !inWishlist)
-      toast(inWishlist ? 'Removed from wishlist' : 'Added to wishlist', 'success')
-    } catch { toast('Could not update wishlist', 'error') }
-  }
-
-  const submitReview = async () => {
-    if (!user) return navigate('/login')
-    if (!rating) return toast('Please select a rating', 'error')
-    setSubmitting(true)
-    try {
-      const ok = await ReviewService.submit({
-        productId: product.id, userId: user.id,
-        orderId: null, userName: user.name,
-        rating, comment
-      })
-      if (!ok) { toast('You already reviewed this product', 'error'); return }
-      toast('Review submitted', 'success')
-      setComment(''); setRating(5); setShowReview(false)
-      load()
-    } catch { toast('Could not submit review', 'error') }
-    finally { setSubmitting(false) }
-  }
-
-  if (loading) return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <Navbar />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
-        <div className="skeleton" style={{ height: 400, borderRadius: 16 }} />
-      </div>
-    </div>
-  )
-
-  if (!product) return null
-
-  const avgRating = reviews.length
-    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
-    : null
-
+function Reviews({ reviews, rating, count }) {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <Navbar />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-
-        {/* Breadcrumb */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 28, fontSize: 13, color: 'var(--text3)' }}>
-          <Link to="/" style={{ color: 'var(--accent)' }}>Shop</Link>
-          <span>/</span>
-          <span>{product.category}</span>
-          <span>/</span>
-          <span style={{ color: 'var(--text2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</span>
-        </div>
-
-        {/* Main layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 48 }} className="product-detail-grid">
-
-          {/* Image */}
-          <div style={{
-            background: 'var(--card)', borderRadius: 16, border: '1px solid var(--border)',
-            aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', minHeight: 320
-          }}>
-            {product.image || product.imageUrl ? (
-              <img src={product.image || product.imageUrl} alt={product.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ textAlign: 'center', color: 'var(--text3)' }}>
-                <div style={{ fontSize: 64, marginBottom: 8 }}>
-                  {product.category}
-                </div>
-                <p style={{ fontSize: 13 }}>No image available</p>
-              </div>
-            )}
+    <section aria-labelledby="reviews" style={{ borderTop: '1px solid var(--border)', paddingTop: 32 }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 14, marginBottom: 20, flexWrap: 'wrap',
+        }}
+      >
+        <h2 id="reviews">Customer reviews</h2>
+        {count > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Rating value={rating} size={16} showEmpty />
+            <span style={{ fontWeight: 700 }}>{rating.toFixed(1)}</span>
+            <span style={{ color: 'var(--text-subtle)', fontSize: '0.875rem' }}>
+              from {count} verified purchase{count === 1 ? '' : 's'}
+            </span>
           </div>
-
-          {/* Info */}
-          <div>
-            {product.isFeatured && (
-              <div style={{ display: 'inline-block', background: 'rgba(240,165,0,0.15)', color: 'var(--yellow)', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, marginBottom: 12, letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                Featured
-              </div>
-            )}
-
-            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 700, color: 'var(--text)', marginBottom: 8, lineHeight: 1.25 }}>
-              {product.name}
-            </h1>
-
-            {/* Rating summary */}
-            {avgRating && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <StarRow rating={Math.round(avgRating)} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{avgRating}</span>
-                <span style={{ fontSize: 13, color: 'var(--text3)' }}>({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
-              </div>
-            )}
-
-            <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--accent)', marginBottom: 16 }}>
-              {fmt(product.price)}
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <span style={{
-                fontSize: 13, fontWeight: 600, padding: '4px 12px', borderRadius: 99,
-                background: product.stock > 0 ? 'rgba(0,196,140,0.12)' : 'rgba(255,77,106,0.12)',
-                color: product.stock > 0 ? 'var(--green)' : 'var(--red)',
-              }}>
-                {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-              </span>
-            </div>
-
-            <p style={{ color: 'var(--text2)', lineHeight: 1.7, fontSize: 15, marginBottom: 24 }}>
-              {product.description || 'No description available.'}
-            </p>
-
-            {/* Seller */}
-            <div style={{ background: 'var(--card2)', borderRadius: 12, padding: '12px 16px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
-                {(product.sellerName || 'S').charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 1 }}>Sold by</p>
-                <Link to={`/seller-profile/${product.sellerId}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--accent)' }}>
-                  {product.sellerName}
-                </Link>
-              </div>
-              {user?.role === 'user' && (
-                <Link to={`/chat/${product.sellerId}`} style={{ fontSize: 13, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border2)', color: 'var(--text2)' }}>
-                  Message
-                </Link>
-              )}
-            </div>
-
-            {/* Actions */}
-            {user?.role === 'user' && product.stock > 0 && (
-              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                {/* Qty selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden' }}>
-                  <button onClick={() => setQty(q => Math.max(1, q - 1))}
-                    style={{ width: 36, height: 44, background: 'var(--card)', color: 'var(--text)', border: 'none', fontSize: 18, cursor: 'pointer' }}>−</button>
-                  <span style={{ width: 36, textAlign: 'center', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{qty}</span>
-                  <button onClick={() => setQty(q => Math.min(product.stock, q + 1))}
-                    style={{ width: 36, height: 44, background: 'var(--card)', color: 'var(--text)', border: 'none', fontSize: 18, cursor: 'pointer' }}>+</button>
-                </div>
-
-                <button onClick={addToCart} className="btn btn-primary" style={{ flex: 1, height: 44, fontSize: 15 }}>
-                  Add to Cart
-                </button>
-
-                <button onClick={toggleWish} style={{
-                  width: 44, height: 44, borderRadius: 10, border: '1px solid var(--border2)',
-                  background: inWishlist ? 'rgba(255,77,106,0.12)' : 'var(--card)',
-                  color: inWishlist ? 'var(--red)' : 'var(--text3)', fontSize: 20, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {inWishlist ? '♥' : '♡'}
-                </button>
-              </div>
-            )}
-
-            {!user && (
-              <Link to="/login" className="btn btn-primary" style={{ display: 'block', textAlign: 'center', padding: '12px', borderRadius: 10, marginBottom: 16 }}>
-                Sign in to purchase
-              </Link>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text3)', flexWrap: 'wrap' }}>
-              <span>Category: <strong style={{ color: 'var(--text2)' }}>{product.category}</strong></span>
-            </div>
-          </div>
-        </div>
-
-        {/* Reviews section */}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700 }}>
-              Customer Reviews
-              {reviews.length > 0 && <span style={{ color: 'var(--text3)', fontWeight: 400, fontSize: 16, marginLeft: 8 }}>({reviews.length})</span>}
-            </h2>
-            {user?.role === 'user' && (
-              <button onClick={() => setShowReview(r => !r)} className="btn btn-sm" style={{ border: '1px solid var(--border2)', color: 'var(--text2)', background: 'var(--card)', borderRadius: 8, padding: '8px 16px', fontSize: 13 }}>
-                {showReview ? 'Cancel' : 'Write a Review'}
-              </button>
-            )}
-          </div>
-
-          {/* Review form */}
-          {showReview && (
-            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, marginBottom: 28 }}>
-              <p style={{ fontWeight: 600, marginBottom: 12 }}>Your rating</p>
-              <div style={{ marginBottom: 16 }}>
-                <StarRow rating={rating} size={28} interactive onRate={setRating} />
-              </div>
-              <textarea
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                placeholder="Share your experience with this product..."
-                rows={4}
-                style={{ width: '100%', background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-                <button onClick={submitReview} disabled={submitting} className="btn btn-primary" style={{ padding: '10px 24px', borderRadius: 10 }}>
-                  {submitting ? 'Submitting...' : 'Submit Review'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {reviews.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text3)' }}>
-              <div style={{ fontSize: 40, marginBottom: 12, color: "var(--text3)" }}>—</div>
-              <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--text2)', marginBottom: 6 }}>No reviews yet</p>
-              <p style={{ fontSize: 14 }}>Be the first to review this product.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {reviews.map(r => (
-                <div key={r.id} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: 'var(--accent)', flexShrink: 0 }}>
-                      {(r.userName || r.user_name || 'U').charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{r.userName || r.user_name}</p>
-                      <StarRow rating={r.rating} size={13} />
-                    </div>
-                    <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text3)' }}>
-                      {r.createdAt || (r.created_at && new Date(r.created_at).toLocaleDateString())}
-                    </span>
-                  </div>
-                  {r.comment && <p style={{ color: 'var(--text2)', fontSize: 14, lineHeight: 1.6 }}>{r.comment}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      <style>{`
-        @media (max-width: 700px) {
-          .product-detail-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
-        }
-      `}</style>
+      <InlineNotice tone="info" title="Only buyers can review">
+        A review can only be written from a delivered order, so every rating here comes from
+        someone who actually received the product.
+      </InlineNotice>
+
+      {reviews.length === 0 ? (
+        <EmptyState
+          icon={Icon.Star}
+          title="No reviews yet"
+          description="Once someone has received this product, their review will appear here."
+        />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 18 }}>
+          {reviews.map((review) => (
+            <article key={review.id} className="card" style={{ padding: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 8 }}>
+                <span
+                  style={{
+                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                    background: 'var(--surface-hover)', color: 'var(--accent-soft)',
+                    display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.75rem',
+                  }}
+                >
+                  {initials(review.authorName)}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{review.authorName}</p>
+                  <Rating value={review.rating} size={12} showEmpty />
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span className="badge badge-success">
+                    <Icon.Check size={11} /> Verified
+                  </span>
+                  <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', marginTop: 3 }}>
+                    {formatDate(review.createdAt)}
+                  </p>
+                </div>
+              </div>
+              {review.comment && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+                  {review.comment}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ProductDetailSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <div className="skeleton" style={{ height: 14, width: 220, marginBottom: 22 }} />
+      <div
+        style={{
+          display: 'grid', gap: 'clamp(20px, 4vw, 40px)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+        }}
+      >
+        <div className="skeleton" style={{ aspectRatio: '1', borderRadius: 'var(--radius-lg)' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="skeleton" style={{ height: 30, width: '80%' }} />
+          <div className="skeleton" style={{ height: 16, width: '40%' }} />
+          <div className="skeleton" style={{ height: 34, width: '50%' }} />
+          <div className="skeleton" style={{ height: 90 }} />
+          <div className="skeleton" style={{ height: 66, borderRadius: 'var(--radius)' }} />
+          <div className="skeleton" style={{ height: 46, borderRadius: 'var(--radius)' }} />
+        </div>
+      </div>
     </div>
   )
 }

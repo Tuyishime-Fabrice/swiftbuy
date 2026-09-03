@@ -1,6 +1,12 @@
 node_modules/
 dist/
+coverage/
+
+# Environment files hold project credentials; only .env.example is committed.
 .env
-.env.local
+.env.*
+!.env.example
+
 .DS_Store
 *.log
+.vercel
