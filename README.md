@@ -303,7 +303,7 @@ gone; roles now live in a database column that the browser cannot write.
 ## Testing
 
 ```bash
-npm test                 # 88 frontend tests (Vitest + Testing Library)
+npm test                 # 223 frontend + contract tests (Vitest)
 npm run test:db          # 68 database security and commerce checks
 npm run lint
 npm run build
@@ -343,6 +343,16 @@ Validation rules, formatting, error classification, the motion vocabulary, the
 async-data hook, and component behaviour (dialog semantics and focus, quantity
 bounds, status wording, wishlist toggle labelling, empty and error states, route
 guards for each role and seller status).
+
+### Schema contract tests
+
+`tests/schema-contract.test.js` parses the migrations and the service layer and
+asserts they agree: every table, every selected column, every embedded
+relationship, every RPC and every RPC argument the app asks for must exist in
+the schema. A column typo is otherwise invisible to the linter and the build and
+only surfaces at runtime against a live project; this catches it in CI, in both
+directions — renaming a column in a migration fails the test just as loudly as
+misspelling one in a query.
 
 ---
 
