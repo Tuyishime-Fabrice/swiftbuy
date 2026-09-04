@@ -15,7 +15,7 @@ revoke all on function public.notify(uuid, text, text, text, text) from public;
 create or replace function public.generate_order_reference()
 returns text language sql volatile as $$
   select 'SB-' || to_char(now(), 'YYMMDD') || '-' ||
-         upper(substr(encode(gen_random_bytes(4), 'hex'), 1, 6))
+         upper(substr(encode(extensions.gen_random_bytes(4), 'hex'), 1, 6))
 $$;
 
 create or replace function public.calc_commission(p_gross bigint, p_rate_bps int)
