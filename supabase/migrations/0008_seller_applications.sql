@@ -56,7 +56,7 @@ begin
     end if;
   end if;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
 
   insert into public.sellers (
     id, store_name, description, status, status_reason,
@@ -80,7 +80,7 @@ begin
     bank_name     = excluded.bank_name,
     bank_account  = excluded.bank_account;
 
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   perform public.notify(
     v_user, 'seller.applied', 'Your seller application has been submitted',

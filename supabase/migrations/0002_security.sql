@@ -481,7 +481,7 @@ grant execute on function public.set_product_featured(uuid, boolean) to authenti
 create or replace function public.internal_context()
 returns boolean
 language sql stable as $$
-  select coalesce(current_setting('swiftbuy.internal', true), '') = 'on'
+  select coalesce(current_setting('shop_mumu.internal', true), '') = 'on'
 $$;
 
 create or replace function public.is_privileged_connection()

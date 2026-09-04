@@ -143,11 +143,11 @@ begin
         v_line_comm, v_line_total - v_line_comm, v_settings.commission_rate_bps
       );
 
-      perform set_config('swiftbuy.internal', 'on', true);
+      perform set_config('shop_mumu.internal', 'on', true);
       update public.products
          set stock = stock - v_line.qty
        where id = v_line.product_id;
-      perform set_config('swiftbuy.internal', 'off', true);
+      perform set_config('shop_mumu.internal', 'off', true);
 
       v_subtotal   := v_subtotal + v_line_total;
       v_commission := v_commission + v_line_comm;
@@ -240,7 +240,7 @@ begin
     raise exception 'This order has already shipped' using errcode = 'P0001';
   end if;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   for v_line in
     select product_id, qty from public.order_items
     where order_id = p_order_id and product_id is not null
@@ -253,7 +253,7 @@ begin
    where order_id = p_order_id and status <> 'delivered';
   update public.payments set status = 'cancelled', failure_reason = coalesce(p_reason, 'Order cancelled')
    where order_id = p_order_id and status in ('pending', 'initiated', 'awaiting_confirmation');
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   perform public.notify(
     v_order.user_id, 'order.cancelled', 'Order ' || v_order.reference || ' cancelled',
@@ -430,7 +430,7 @@ create or replace function public.refresh_product_rating()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare v_product uuid := coalesce(new.product_id, old.product_id);
 begin
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   update public.products p
      set rating_avg = coalesce((
            select round(avg(r.rating)::numeric, 2) from public.reviews r
@@ -438,7 +438,7 @@ begin
          rating_count = (
            select count(*) from public.reviews r where r.product_id = v_product)
    where p.id = v_product;
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
   return null;
 end;
 $$;

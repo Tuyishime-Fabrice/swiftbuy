@@ -801,4 +801,40 @@ select tests.ok(public.calc_commission(100000, 10000) = 100000,
   'commission never exceeds the gross amount');
 
 \echo ''
+\echo '── Internal identifier naming ────────────────────────────────────────'
+
+select tests.ok(
+  (select count(*) from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.prosrc like '%swiftbuy%') = 0,
+  'no database function still refers to the former brand name');
+
+select tests.ok(
+  (select count(*) from pg_policies
+   where schemaname = 'storage' and tablename = 'objects'
+     and policyname like 'swiftbuy:%') = 0,
+  'no storage policy still carries the former brand prefix');
+
+select tests.ok(
+  (select count(*) from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.prosrc like '%shop_mumu.internal%') >= 10,
+  'the guard setting is read and written under the current name');
+
+select tests.ok(
+  (select count(*) from pg_policies
+   where schemaname = 'storage' and tablename = 'objects'
+     and policyname like 'shop_mumu:%') = 9,
+  'all nine storage policies carry the current prefix');
+
+begin;
+select set_config('shop_mumu.internal', 'on', true);
+select tests.ok(public.internal_context(),
+  'the guard setting opens an internal context');
+rollback;
+
+select tests.ok(not public.internal_context(),
+  'the guard setting is closed by default');
+
+\echo ''
 \echo '══ all security and commerce checks passed ══════════════════════════'

@@ -35,7 +35,7 @@ begin
       using errcode = '22023';
   end if;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   update public.payments
      set status = case when provider = 'cash_on_delivery'
                        then 'initiated'::public.payment_status
@@ -43,7 +43,7 @@ begin
          customer_reference = nullif(trim(coalesce(p_customer_reference, '')), ''),
          failure_reason = null
    where id = v_payment.id;
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   perform public.notify(
     oi.seller_id, 'payment.declared',
@@ -99,7 +99,7 @@ begin
     raise exception 'This payment is closed' using errcode = 'P0001';
   end if;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   update public.payments
      set status                  = 'successful',
          provider_transaction_id = coalesce(p_provider_transaction_id, provider_transaction_id),
@@ -110,7 +110,7 @@ begin
 
   update public.orders set status = 'confirmed'
    where id = v_payment.order_id and status = 'pending';
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   perform public.notify(
     v_order.user_id, 'payment.confirmed',
@@ -158,11 +158,11 @@ begin
       using errcode = '42501';
   end if;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   update public.payments
      set status = 'failed', failure_reason = trim(p_reason)
    where id = p_payment_id;
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   perform public.notify(
     v_order.user_id, 'payment.rejected',
@@ -199,11 +199,11 @@ begin
 
   select * into v_order from public.orders where id = v_payment.order_id;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   update public.payments set status = 'refunded', failure_reason = trim(p_reason)
    where id = p_payment_id;
   update public.orders set status = 'refunded' where id = v_payment.order_id;
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   perform public.notify(
     v_order.user_id, 'payment.refunded',
@@ -242,7 +242,7 @@ begin
     raise exception 'This order is not yours' using errcode = '42501';
   end if;
 
-  perform set_config('swiftbuy.internal', 'on', true);
+  perform set_config('shop_mumu.internal', 'on', true);
   update public.payments
      set status = case when p_succeed then 'successful'::public.payment_status
                        else 'failed'::public.payment_status end,
@@ -255,7 +255,7 @@ begin
     update public.orders set status = 'confirmed'
      where id = v_payment.order_id and status = 'pending';
   end if;
-  perform set_config('swiftbuy.internal', 'off', true);
+  perform set_config('shop_mumu.internal', 'off', true);
 
   insert into public.audit_logs (actor_id, action, entity_type, entity_id, metadata)
   values (auth.uid(), 'payment.simulated', 'payment', p_payment_id::text,

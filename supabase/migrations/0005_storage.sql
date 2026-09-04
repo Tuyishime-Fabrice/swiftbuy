@@ -34,17 +34,17 @@ begin
   for r in
     select policyname from pg_policies
     where schemaname = 'storage' and tablename = 'objects'
-      and policyname like 'swiftbuy:%'
+      and policyname like 'shop_mumu:%'
   loop
     execute format('drop policy %I on storage.objects', r.policyname);
   end loop;
 end $$;
 
-create policy "swiftbuy: product images are public"
+create policy "shop_mumu: product images are public"
   on storage.objects for select
   using (bucket_id = 'product-images');
 
-create policy "swiftbuy: sellers upload their own product images"
+create policy "shop_mumu: sellers upload their own product images"
   on storage.objects for insert to authenticated
   with check (
     bucket_id = 'product-images'
@@ -52,7 +52,7 @@ create policy "swiftbuy: sellers upload their own product images"
     and public.is_approved_seller()
   );
 
-create policy "swiftbuy: sellers replace their own product images"
+create policy "shop_mumu: sellers replace their own product images"
   on storage.objects for update to authenticated
   using (
     bucket_id = 'product-images'
@@ -63,18 +63,18 @@ create policy "swiftbuy: sellers replace their own product images"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "swiftbuy: sellers delete their own product images"
+create policy "shop_mumu: sellers delete their own product images"
   on storage.objects for delete to authenticated
   using (
     bucket_id = 'product-images'
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
 
-create policy "swiftbuy: profile images are public"
+create policy "shop_mumu: profile images are public"
   on storage.objects for select
   using (bucket_id = 'profile-images');
 
-create policy "swiftbuy: users manage their own avatar"
+create policy "shop_mumu: users manage their own avatar"
   on storage.objects for all to authenticated
   using (
     bucket_id = 'profile-images'
@@ -85,21 +85,21 @@ create policy "swiftbuy: users manage their own avatar"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "swiftbuy: seller documents are private"
+create policy "shop_mumu: seller documents are private"
   on storage.objects for select to authenticated
   using (
     bucket_id = 'seller-documents'
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
 
-create policy "swiftbuy: sellers upload their own documents"
+create policy "shop_mumu: sellers upload their own documents"
   on storage.objects for insert to authenticated
   with check (
     bucket_id = 'seller-documents'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
-create policy "swiftbuy: sellers delete their own documents"
+create policy "shop_mumu: sellers delete their own documents"
   on storage.objects for delete to authenticated
   using (
     bucket_id = 'seller-documents'
