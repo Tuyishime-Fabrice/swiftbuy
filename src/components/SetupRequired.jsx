@@ -1,12 +1,5 @@
 import * as Icon from './Icons'
 
-/**
- * Shown when the app has no Supabase credentials.
- *
- * The previous version fell back to a per-browser localStorage store, which
- * made an unconfigured app look like a working marketplace. It is more honest
- * — and far more useful to whoever is setting it up — to say what is missing.
- */
 export default function SetupRequired() {
   return (
     <div className="page" style={{ display: 'grid', placeItems: 'center', padding: 24 }}>

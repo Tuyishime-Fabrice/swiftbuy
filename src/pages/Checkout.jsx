@@ -17,15 +17,6 @@ import { stepVariants } from '../lib/motion'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/**
- * Checkout.
- *
- * Three steps — delivery, payment method, review — then one call to
- * place_order. The client sends where to deliver and how the buyer intends to
- * pay; the server decides what it costs. A ref guards against a double
- * submission producing two orders if the button is pressed twice.
- */
-
 const STEPS = [
   { key: 'delivery', label: 'Delivery' },
   { key: 'payment', label: 'Payment' },
@@ -40,9 +31,6 @@ export default function Checkout() {
   const [stepIndex, setStepIndex] = useState(0)
   const [direction, setDirection] = useState(1)
 
-  // What the customer has typed. Anything they have not touched falls back to
-  // their saved profile, which avoids an effect that copies loaded data into
-  // form state after render.
   const [typed, setTyped] = useState({})
   const [paymentProvider, setPaymentProvider] = useState('manual_momo')
   const [errors, setErrors] = useState({})
@@ -50,7 +38,6 @@ export default function Checkout() {
   const [placing, setPlacing] = useState(false)
   const [placed, setPlaced] = useState(null)
 
-  // Belt and braces against a double-click racing past the disabled state.
   const submitting = useRef(false)
 
   const { status, data, error: loadError, retry } = useAsyncData(
@@ -113,8 +100,7 @@ export default function Checkout() {
       setPlaced(result)
       toast.success(`Order ${result.reference} placed`)
     } catch (err) {
-      // Stock ran out, a store was suspended, a price rule failed — the message
-      // comes from the database and is already written for the customer.
+
       setPlaceError(err.message)
       submitting.current = false
     } finally {
@@ -213,8 +199,6 @@ export default function Checkout() {
   )
 }
 
-// ── Stepper ─────────────────────────────────────────────────────────────────
-
 function Stepper({ steps, activeIndex, onSelect }) {
   return (
     <ol style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -270,8 +254,6 @@ function Stepper({ steps, activeIndex, onSelect }) {
     </ol>
   )
 }
-
-// ── Steps ───────────────────────────────────────────────────────────────────
 
 function DeliveryStep({ delivery, errors, onChange, onNext }) {
   return (
@@ -330,8 +312,7 @@ function DeliveryStep({ delivery, errors, onChange, onNext }) {
 }
 
 function PaymentStep({ items, value, onChange, onBack, onNext }) {
-  // Show the payment details of each store in the basket, so the buyer knows
-  // where the money is going before they choose a method.
+
   const stores = [...new Map(items.map((i) => [i.sellerId, i.storeName])).entries()]
 
   return (
@@ -501,8 +482,6 @@ function ReviewStep({ items, delivery, paymentProvider, subtotal, deliveryFee, p
     </div>
   )
 }
-
-// ── Confirmation ────────────────────────────────────────────────────────────
 
 function OrderPlaced({ result, provider }) {
   return (

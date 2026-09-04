@@ -1,30 +1,3 @@
--- ═══════════════════════════════════════════════════════════════════════════
---  SwiftBuy V2 — 0004 Payments
---
---  The rule this file exists to enforce: a payment becomes 'successful' only
---  when a party who can actually observe the money says so. A buyer clicking
---  a button is a *claim*, not a settlement.
---
---  Rails implemented today:
---    manual_momo / manual_bank  the buyer pays the seller directly (MTN MoMo,
---                               Airtel Money or a bank transfer), enters the
---                               confirmation code, and the seller — who can
---                               see their own account — confirms receipt.
---    cash_on_delivery           settled on hand-over; the seller confirms.
---    sandbox                    a development simulator, off by default and
---                               refused entirely unless the operator turns it
---                               on for that project.
---
---  No gateway API is called from this codebase, because no gateway credentials
---  ship with it. `confirm_payment_from_provider` is the single, deliberately
---  narrow seam an Edge Function would use once a provider is integrated; it is
---  not callable by any browser client.
--- ═══════════════════════════════════════════════════════════════════════════
-
--- ── The buyer declares an out-of-band payment ───────────────────────────────
--- Moves the payment to 'awaiting_confirmation'. The order is NOT paid yet and
--- the UI must not say that it is.
-
 create or replace function public.declare_payment(
   p_order_id uuid,
   p_customer_reference text default null
@@ -72,7 +45,6 @@ begin
    where id = v_payment.id;
   perform set_config('swiftbuy.internal', 'off', true);
 
-  -- Tell every seller on the order that there is something to verify.
   perform public.notify(
     oi.seller_id, 'payment.declared',
     'Payment declared for ' || v_order.reference,
@@ -93,10 +65,6 @@ $$;
 revoke all on function public.declare_payment(uuid, text) from public;
 grant execute on function public.declare_payment(uuid, text) to authenticated;
 
--- ── A seller on the order (or an admin) confirms receipt ────────────────────
--- This is the only client-reachable path to 'successful', and the caller must
--- be someone who can actually see the money arrive.
-
 create or replace function public.confirm_payment(
   p_payment_id uuid,
   p_provider_transaction_id text default null
@@ -115,7 +83,6 @@ begin
 
   select * into v_order from public.orders where id = v_payment.order_id;
 
-  -- The buyer is explicitly not on this list.
   select public.is_admin() or exists (
     select 1 from public.order_items oi
     where oi.order_id = v_payment.order_id and oi.seller_id = auth.uid()
@@ -126,7 +93,7 @@ begin
       using errcode = '42501';
   end if;
   if v_payment.status = 'successful' then
-    return;  -- already settled; confirming twice is a no-op, not an error
+    return;
   end if;
   if v_payment.status in ('cancelled', 'refunded') then
     raise exception 'This payment is closed' using errcode = 'P0001';
@@ -141,7 +108,6 @@ begin
          failure_reason          = null
    where id = p_payment_id;
 
-  -- Confirming payment moves a still-pending order into the workflow.
   update public.orders set status = 'confirmed'
    where id = v_payment.order_id and status = 'pending';
   perform set_config('swiftbuy.internal', 'off', true);
@@ -160,7 +126,6 @@ $$;
 revoke all on function public.confirm_payment(uuid, text) from public;
 grant execute on function public.confirm_payment(uuid, text) to authenticated;
 
--- ── Reject a claimed payment ────────────────────────────────────────────────
 create or replace function public.reject_payment(p_payment_id uuid, p_reason text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -213,10 +178,6 @@ $$;
 revoke all on function public.reject_payment(uuid, text) from public;
 grant execute on function public.reject_payment(uuid, text) to authenticated;
 
--- ── Refunds ─────────────────────────────────────────────────────────────────
--- Records that an administrator has refunded an order. It does not move money
--- — no payout rail is integrated — so the wording everywhere is "recorded".
-
 create or replace function public.record_refund(p_payment_id uuid, p_reason text)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -256,11 +217,6 @@ $$;
 
 revoke all on function public.record_refund(uuid, text) from public;
 grant execute on function public.record_refund(uuid, text) to authenticated;
-
--- ── Sandbox simulator (development only) ────────────────────────────────────
--- Lets a developer exercise the paid/failed branches without a real rail.
--- Refuses to run unless the operator has switched sandbox payments on, and
--- every row it touches is stamped so a demo can never be mistaken for revenue.
 
 create or replace function public.simulate_payment(p_payment_id uuid, p_succeed boolean)
 returns void
@@ -310,11 +266,6 @@ $$;
 revoke all on function public.simulate_payment(uuid, boolean) from public;
 grant execute on function public.simulate_payment(uuid, boolean) to authenticated;
 
--- ── Provider callback seam (server-side only) ───────────────────────────────
--- The shape a future gateway integration plugs into. An Edge Function that has
--- verified a provider's webhook signature calls this with the service role;
--- it is revoked from anon and authenticated so no browser can reach it.
-
 create or replace function public.confirm_payment_from_provider(
   p_transaction_reference text,
   p_provider_transaction_id text,
@@ -331,13 +282,13 @@ begin
   if v_payment.id is null then
     raise exception 'Unknown transaction reference' using errcode = 'P0002';
   end if;
-  -- The amount the provider settled must match what was ordered.
+
   if v_payment.amount_rwf <> p_amount_rwf then
     raise exception 'Settled amount % does not match order amount %',
       p_amount_rwf, v_payment.amount_rwf using errcode = 'P0001';
   end if;
   if v_payment.status = 'successful' then
-    return;  -- webhooks retry; confirming twice must be harmless
+    return;
   end if;
 
   select * into v_order from public.orders where id = v_payment.order_id;
@@ -363,10 +314,6 @@ $$;
 
 revoke all on function public.confirm_payment_from_provider(text, text, bigint) from public;
 revoke all on function public.confirm_payment_from_provider(text, text, bigint) from anon, authenticated;
-
--- ── Seller earnings view ────────────────────────────────────────────────────
--- Earnings are only counted once the matching payment is confirmed, so a
--- seller's dashboard never shows money that has not actually been settled.
 
 create or replace view public.seller_earnings
 with (security_invoker = true) as

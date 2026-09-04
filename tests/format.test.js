@@ -52,7 +52,7 @@ describe('formatRelative', () => {
     expect(formatRelative('2026-03-14T11:45:00Z')).toBe('15 min ago')
     expect(formatRelative('2026-03-14T09:00:00Z')).toBe('3 h ago')
     expect(formatRelative('2026-03-12T12:00:00Z')).toBe('2 d ago')
-    // Beyond a week, an actual date is more useful than "9 d ago".
+
     expect(formatRelative('2026-03-01T12:00:00Z')).toBe('1 Mar 2026')
   })
 })

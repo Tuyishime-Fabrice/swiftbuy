@@ -1,8 +1,3 @@
-/**
- * Display helpers. Prices are whole Rwandan francs stored as integers, so
- * formatting never has to worry about floating-point drift.
- */
-
 const rwf = new Intl.NumberFormat('en-RW', { maximumFractionDigits: 0 })
 
 export function formatRwf(amount, { withCurrency = true } = {}) {
@@ -29,7 +24,6 @@ export function formatDateTime(value) {
   })
 }
 
-/** "3 minutes ago" style labels for chat and notification lists. */
 export function formatRelative(value) {
   if (!value) return ''
   const d = new Date(value)
@@ -56,10 +50,6 @@ export function initials(name) {
     .toUpperCase()
 }
 
-/**
- * Stock is shown as a state, not a raw number, so the storefront never
- * advertises exact inventory levels it has no reason to reveal.
- */
 export function stockState(stock, lowThreshold = 5) {
   const n = Number(stock ?? 0)
   if (n <= 0) return 'out_of_stock'

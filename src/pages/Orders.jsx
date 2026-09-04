@@ -20,15 +20,6 @@ import { validateRating } from '../utils/validation'
 import { listItem, listContainer } from '../lib/motion'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/**
- * The customer's orders.
- *
- * This page is where the honest payment story shows up: an order carries a
- * payment record with its own status, the customer can declare that they have
- * paid, and only the seller's confirmation flips it to paid. Reviews and
- * dispute reporting hang off delivered lines, which is what makes them
- * verified.
- */
 export default function Orders() {
   const { user } = useAuth()
   const toast = useToast()
@@ -178,8 +169,6 @@ export default function Orders() {
   )
 }
 
-// ── Order card ──────────────────────────────────────────────────────────────
-
 function OrderCard({ order, reviewedItems, onPay, onCancel, onReview, onDispute }) {
   const payment = order.payment
   const paid = payment?.status === 'successful'
@@ -273,7 +262,6 @@ function OrderCard({ order, reviewedItems, onPay, onCancel, onReview, onDispute 
         })}
       </ul>
 
-      {/* Per-seller delivery progress: one customer order, several journeys. */}
       {order.shipments.length > 0 && (
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
           <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-subtle)', letterSpacing: '0.04em', marginBottom: 8 }}>
@@ -365,12 +353,6 @@ function OrderCard({ order, reviewedItems, onPay, onCancel, onReview, onDispute 
   )
 }
 
-// ── Payment dialog ──────────────────────────────────────────────────────────
-
-/**
- * Where the buyer declares an out-of-band payment. It never marks the order
- * paid — the wording and the outcome both make that clear.
- */
 function PaymentDialog({ order, onClose, onDone }) {
   const toast = useToast()
   const [stores, setStores] = useState([])
@@ -500,8 +482,6 @@ function PaymentDialog({ order, onClose, onDone }) {
   )
 }
 
-// ── Review dialog ───────────────────────────────────────────────────────────
-
 function ReviewDialog({ target, userId, onClose, onDone }) {
   const toast = useToast()
   const [rating, setRating] = useState(0)
@@ -584,8 +564,6 @@ function ReviewDialog({ target, userId, onClose, onDone }) {
     </Modal>
   )
 }
-
-// ── Dispute dialog ──────────────────────────────────────────────────────────
 
 function DisputeDialog({ target, onClose, onDone }) {
   const toast = useToast()

@@ -9,14 +9,6 @@ import { SellerService, SELLER_STATUS_LABEL } from '../../services/accounts'
 import { formatDate } from '../../utils/format'
 import { validatePhone, collectErrors } from '../../utils/validation'
 
-/**
- * Store settings.
- *
- * The payment details here are what a customer is shown when they go to pay,
- * so they are worth getting right — but note what a seller cannot do from this
- * page: change their store's approval status. That column is pinned by the
- * database, and only an administrator's moderation call moves it.
- */
 export default function SellerStore() {
   const { user, refresh } = useAuth()
   const toast = useToast()

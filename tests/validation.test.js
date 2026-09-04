@@ -2,15 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   validateEmail, validatePassword, validateFullName, validatePhone, validateAddress,
   validatePrice, validateStock, validateProductName, validateQuantity, validateRating,
-  validateImageFile, collectErrors, LIMITS,
+  validateImageFile, validateStoreName, validateDocumentFile, collectErrors, LIMITS,
 } from '../src/utils/validation'
-
-/**
- * These rules mirror the CHECK constraints and function guards in
- * supabase/migrations. They are the fast feedback loop in the form; the
- * database is the enforcement point. A change to one should be a change to
- * both, and these tests pin what the form promises.
- */
 
 describe('email', () => {
   it('accepts an ordinary address', () => {
@@ -134,6 +127,40 @@ describe('image uploads', () => {
 
   it('refuses a file over the bucket size limit', () => {
     expect(validateImageFile(file('image/jpeg', LIMITS.imageBytes + 1))).toMatch(/smaller than/)
+  })
+})
+
+describe('seller application fields', () => {
+  it('needs a usable store name', () => {
+    expect(validateStoreName('Gigi Electronics')).toBeNull()
+    expect(validateStoreName('')).toMatch(/required/i)
+    expect(validateStoreName(' G ')).toMatch(/too short/)
+    expect(validateStoreName('x'.repeat(LIMITS.storeNameMax + 1))).toMatch(/too long/)
+  })
+})
+
+describe('verification documents', () => {
+  const file = (type, size) => ({ name: 'licence.pdf', type, size })
+
+  it('accepts a scan or a photograph of a document', () => {
+    expect(validateDocumentFile(file('application/pdf', 2048))).toBeNull()
+    expect(validateDocumentFile(file('image/jpeg', 2048))).toBeNull()
+    expect(validateDocumentFile(file('image/png', 2048))).toBeNull()
+  })
+
+  it('refuses anything that is not a document or an image of one', () => {
+    expect(validateDocumentFile(file('application/x-msdownload', 2048))).toMatch(/PDF/)
+    expect(validateDocumentFile(file('text/html', 2048))).toMatch(/PDF/)
+    expect(validateDocumentFile(file('image/svg+xml', 2048))).toMatch(/PDF/)
+  })
+
+  it('refuses a file over the bucket size limit', () => {
+    expect(validateDocumentFile(file('application/pdf', LIMITS.documentBytes + 1)))
+      .toMatch(/smaller than/)
+  })
+
+  it('asks for a file when none was chosen', () => {
+    expect(validateDocumentFile(null)).toMatch(/choose a file/i)
   })
 })
 

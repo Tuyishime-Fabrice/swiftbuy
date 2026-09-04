@@ -17,13 +17,6 @@ import { formatDate, initials } from '../utils/format'
 import { listContainer } from '../lib/motion'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/**
- * A store's public page.
- *
- * Only approved stores are visible: the RLS policy on `sellers` returns
- * nothing for a pending, rejected or suspended store, so this page shows a
- * clean "not available" rather than leaking its existence.
- */
 export default function StorePage() {
   const { sellerId } = useParams()
   const { user, isCustomer } = useAuth()
@@ -46,7 +39,7 @@ export default function StorePage() {
 
   const store = data?.store ?? null
   const result = data?.result ?? { items: [], total: 0 }
-  // An unapproved, suspended or missing store returns no row at all under RLS.
+
   const missing = status === 'ready' && !store
 
   useEffect(() => {
@@ -84,7 +77,7 @@ export default function StorePage() {
 
   const messageStore = async () => {
     if (!user) return navigate('/login', { state: { from: `/store/${sellerId}` } })
-    if (!isCustomer) return toast.info('Only customers can message a store.')
+    if (!isCustomer) return toast.info('Administrator accounts cannot message stores.')
     try {
       const conversationId = await ChatService.openWithSeller(sellerId)
       navigate(`/messages/${conversationId}`)
@@ -153,7 +146,7 @@ export default function StorePage() {
           )}
         </div>
 
-        {isCustomer && (
+        {isCustomer && user?.id !== sellerId && (
           <button type="button" className="btn btn-outline" onClick={messageStore}>
             <Icon.Chat size={16} /> Message store
           </button>

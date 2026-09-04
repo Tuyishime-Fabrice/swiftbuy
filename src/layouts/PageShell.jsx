@@ -5,12 +5,6 @@ import Navbar from '../components/Navbar'
 import { pageTransition } from '../lib/motion'
 import * as Icon from '../components/Icons'
 
-/**
- * The standard page frame: header, an animated main region and the footer.
- *
- * It also owns the document title, so every route sets one without repeating
- * the same effect, and gives `main` an id for the skip link to target.
- */
 export default function PageShell({ title, children, footer = true, width = 'default' }) {
   useEffect(() => {
     document.title = title ? `${title} · SwiftBuy` : 'SwiftBuy'
@@ -38,10 +32,6 @@ export default function PageShell({ title, children, footer = true, width = 'def
   )
 }
 
-/**
- * A bare frame for pages that manage their own full-height layout — the chat
- * screens, mainly, which need the message list to fill the viewport.
- */
 export function BarePageShell({ title, children }) {
   useEffect(() => {
     document.title = title ? `${title} · SwiftBuy` : 'SwiftBuy'
@@ -99,7 +89,7 @@ export function SiteFooter() {
           </FooterColumn>
 
           <FooterColumn title="Sell">
-            <FooterLink to="/register">Open a store</FooterLink>
+            <FooterLink to="/sell/apply">Apply to sell</FooterLink>
             <FooterLink to="/seller">Seller dashboard</FooterLink>
           </FooterColumn>
 

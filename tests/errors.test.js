@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { classifyError, ErrorKind } from '../src/lib/errors'
 
-/**
- * The database raises deliberate SQLSTATE codes from the functions in
- * supabase/migrations, and those messages are already written for a person to
- * read. Anything else must not leak a constraint name into the UI.
- */
-
 describe('classifyError', () => {
   it('passes through messages our own functions authored', () => {
     expect(classifyError({ code: 'P0001', message: 'Only 3 of Yoga Mat left in stock' }))

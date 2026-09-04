@@ -4,7 +4,6 @@ import { afterEach, vi } from 'vitest'
 
 afterEach(cleanup)
 
-// jsdom implements neither of these, and several components ask for them.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query) => ({

@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Applies the migrations to a throwaway PostgreSQL database and runs the
-# security/commerce suite against them.
-#
-#   ./supabase/tests/run.sh                # uses a local cluster on $PGPORT
-#   PGHOST=/tmp PGPORT=55432 ./supabase/tests/run.sh
-#
-# Requires psql 15+. The local shim stands in for Supabase's auth and storage
-# schemas so the suite needs no cloud project.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

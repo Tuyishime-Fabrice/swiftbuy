@@ -17,24 +17,12 @@ import { formatRwf, formatDate, stockState, STOCK_LABEL, initials } from '../uti
 import { fadeIn, listContainer, DURATION, EASE } from '../lib/motion'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/**
- * The product page.
- *
- * Everything on it is real: the gallery comes from Storage, the rating is the
- * cached average of verified reviews, and the review list is read-only here —
- * a review can only be written from a delivered order, so the write path lives
- * on the orders page rather than behind a "write a review" button anyone can
- * press.
- */
 export default function ProductDetail() {
   const { id } = useParams()
   const { user, isCustomer } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
 
-  // Gallery and quantity are stamped with the product they belong to, so
-  // navigating to a different product resets them by derivation rather than
-  // by an effect that writes state after the render.
   const [selection, setSelection] = useState({ productId: null, image: 0, qty: 1 })
   const activeImage = selection.productId === id ? selection.image : 0
   const qty = selection.productId === id ? selection.qty : 1
@@ -67,8 +55,7 @@ export default function ProductDetail() {
   const product = data?.product ?? null
   const reviews = data?.reviews ?? []
   const related = data?.related ?? []
-  // A delisted product, or one whose store is no longer approved, returns no
-  // row under RLS rather than an error.
+
   const missing = status === 'ready' && !product
 
   useEffect(() => {
@@ -78,7 +65,7 @@ export default function ProductDetail() {
 
   const addToCart = async () => {
     if (!user) return navigate('/login', { state: { from: `/product/${id}` } })
-    if (!isCustomer) return toast.info('Switch to a customer account to shop.')
+    if (!isCustomer) return toast.info('Administrator accounts cannot place orders.')
 
     setAdding(true)
     try {
@@ -93,7 +80,7 @@ export default function ProductDetail() {
 
   const toggleWishlist = async () => {
     if (!user) return navigate('/login', { state: { from: `/product/${id}` } })
-    if (!isCustomer) return toast.info('Switch to a customer account to save products.')
+    if (!isCustomer) return toast.info('Administrator accounts cannot save products.')
     try {
       const saved = await WishlistService.toggle(user.id, product.id)
       setWishlisted(saved)
@@ -105,7 +92,7 @@ export default function ProductDetail() {
 
   const messageSeller = async () => {
     if (!user) return navigate('/login', { state: { from: `/product/${id}` } })
-    if (!isCustomer) return toast.info('Only customers can message a store.')
+    if (!isCustomer) return toast.info('Administrator accounts cannot message stores.')
     try {
       const conversationId = await ChatService.openWithSeller(product.sellerId)
       navigate(`/messages/${conversationId}`)
@@ -245,7 +232,7 @@ export default function ProductDetail() {
                   </p>
                 )}
               </div>
-              {isCustomer && (
+              {isCustomer && user?.id !== product.sellerId && (
                 <button type="button" className="btn btn-outline btn-sm" onClick={messageSeller}>
                   <Icon.Chat size={15} /> Message
                 </button>
@@ -319,8 +306,6 @@ export default function ProductDetail() {
   )
 }
 
-// ── Gallery ─────────────────────────────────────────────────────────────────
-
 function Gallery({ images, activeIndex, onSelect, alt }) {
   const active = images[activeIndex]
   const src = productImageUrl(active?.storage_path, { width: 900 })
@@ -383,8 +368,6 @@ function Gallery({ images, activeIndex, onSelect, alt }) {
     </div>
   )
 }
-
-// ── Reviews ─────────────────────────────────────────────────────────────────
 
 function Reviews({ reviews, rating, count }) {
   return (

@@ -13,15 +13,6 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
-/**
- * Routing.
- *
- * The storefront and the two auth screens load with the initial bundle since
- * they are the entry points. Everything behind a sign-in — dashboards, charts,
- * checkout — is code-split, so a first-time visitor browsing products never
- * downloads the admin dashboard or the charting library.
- */
-
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
@@ -33,6 +24,7 @@ const Wishlist = lazy(() => import('./pages/Wishlist'))
 const Messages = lazy(() => import('./pages/Messages'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const Profile = lazy(() => import('./pages/Profile'))
+const SellerApply = lazy(() => import('./pages/SellerApply'))
 
 const SellerOrders = lazy(() => import('./pages/seller/SellerOrders'))
 const SellerProducts = lazy(() => import('./pages/seller/SellerProducts'))
@@ -49,10 +41,10 @@ function AppRoutes() {
 
   return (
     <Suspense fallback={<div className="page"><Spinner label="Loading page" /></div>}>
-      {/* mode="wait" keeps the outgoing page from overlapping the incoming one. */}
+
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
-          {/* Public */}
+
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -61,7 +53,6 @@ function AppRoutes() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/store/:sellerId" element={<StorePage />} />
 
-          {/* Customer */}
           <Route path="/cart" element={
             <ProtectedRoute roles={['customer']}><Cart /></ProtectedRoute>
           } />
@@ -81,7 +72,6 @@ function AppRoutes() {
             <ProtectedRoute roles={['customer']}><Messages /></ProtectedRoute>
           } />
 
-          {/* Any signed-in account */}
           <Route path="/notifications" element={
             <ProtectedRoute><Notifications /></ProtectedRoute>
           } />
@@ -89,29 +79,29 @@ function AppRoutes() {
             <ProtectedRoute><Profile /></ProtectedRoute>
           } />
 
-          {/* Seller. The store settings page stays reachable while pending so a
-              seller can complete their details before approval. */}
-          <Route path="/seller" element={
-            <ProtectedRoute roles={['seller']} requireApprovedSeller><SellerOrders /></ProtectedRoute>
-          } />
-          <Route path="/seller/products" element={
-            <ProtectedRoute roles={['seller']} requireApprovedSeller><SellerProducts /></ProtectedRoute>
-          } />
-          <Route path="/seller/analytics" element={
-            <ProtectedRoute roles={['seller']} requireApprovedSeller><SellerAnalytics /></ProtectedRoute>
-          } />
-          <Route path="/seller/chats" element={
-            <ProtectedRoute roles={['seller']} requireApprovedSeller><SellerChats /></ProtectedRoute>
-          } />
-          <Route path="/seller/chats/:conversationId" element={
-            <ProtectedRoute roles={['seller']} requireApprovedSeller><SellerChats /></ProtectedRoute>
-          } />
-          <Route path="/seller/store" element={
-            <ProtectedRoute roles={['seller']}><SellerStore /></ProtectedRoute>
+          <Route path="/sell/apply" element={
+            <ProtectedRoute roles={['customer']}><SellerApply /></ProtectedRoute>
           } />
 
-          {/* Admin and superadmin share one dashboard; it hides what a plain
-              admin may not do, and the database refuses it regardless. */}
+          <Route path="/seller" element={
+            <ProtectedRoute requireApprovedSeller><SellerOrders /></ProtectedRoute>
+          } />
+          <Route path="/seller/products" element={
+            <ProtectedRoute requireApprovedSeller><SellerProducts /></ProtectedRoute>
+          } />
+          <Route path="/seller/analytics" element={
+            <ProtectedRoute requireApprovedSeller><SellerAnalytics /></ProtectedRoute>
+          } />
+          <Route path="/seller/chats" element={
+            <ProtectedRoute requireApprovedSeller><SellerChats /></ProtectedRoute>
+          } />
+          <Route path="/seller/chats/:conversationId" element={
+            <ProtectedRoute requireApprovedSeller><SellerChats /></ProtectedRoute>
+          } />
+          <Route path="/seller/store" element={
+            <ProtectedRoute requireApprovedSeller><SellerStore /></ProtectedRoute>
+          } />
+
           <Route path="/admin" element={
             <ProtectedRoute roles={['admin', 'superadmin']}><AdminDashboard /></ProtectedRoute>
           } />

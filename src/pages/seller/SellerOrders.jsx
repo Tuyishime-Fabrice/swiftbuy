@@ -17,14 +17,6 @@ import { formatRwf, formatDateTime } from '../../utils/format'
 import { listContainer, listItem } from '../../lib/motion'
 import { useAsyncData } from '../../hooks/useAsyncData'
 
-/**
- * The seller's order desk.
- *
- * Two jobs live here: moving each shipment along its lifecycle, and verifying
- * the payments customers say they have made. Both go through database
- * functions that check the caller actually sells on the order, so this screen
- * cannot be used to touch another store's work.
- */
 export default function SellerOrders() {
   const { user } = useAuth()
   const toast = useToast()
@@ -189,8 +181,6 @@ export default function SellerOrders() {
   )
 }
 
-// ── Order card ──────────────────────────────────────────────────────────────
-
 function SellerOrderCard({ order, cases, onAdvance, onVerifyPayment, onOpenCase }) {
   const shipment = order.shipment
   const payment = order.payment
@@ -240,7 +230,6 @@ function SellerOrderCard({ order, cases, onAdvance, onVerifyPayment, onOpenCase 
         ))}
       </ul>
 
-      {/* The seller sees their own share, and what the platform takes. */}
       <dl
         style={{
           borderTop: '1px solid var(--border)', paddingTop: 12,
@@ -323,12 +312,6 @@ function SellerOrderCard({ order, cases, onAdvance, onVerifyPayment, onOpenCase 
   )
 }
 
-// ── Payment verification ────────────────────────────────────────────────────
-
-/**
- * The one place a payment can become 'successful' from the UI, and it is the
- * seller — the party who can actually see the money — who does it.
- */
 function VerifyPaymentDialog({ order, onClose, onDone }) {
   const toast = useToast()
   const [mode, setMode] = useState('confirm')
@@ -437,8 +420,6 @@ function VerifyPaymentDialog({ order, onClose, onDone }) {
     </Modal>
   )
 }
-
-// ── Dispute reply ───────────────────────────────────────────────────────────
 
 function RespondToCaseDialog({ dispute, onClose, onDone }) {
   const toast = useToast()

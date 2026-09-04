@@ -1,22 +1,11 @@
-/* ══════════════════════════════════════════════════════════════════════════
-   SwiftBuy design system
-
-   The palette, type scale and motion timings the whole app draws from. The
-   original SwiftBuy identity is kept — the indigo accent, the Syne display
-   face over DM Sans, the dark-first surface — and tightened into tokens so
-   pages stop hand-rolling colours and spacing.
-   ══════════════════════════════════════════════════════════════════════════ */
-
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  /* ── Brand ─────────────────────────────────────────────────────────────── */
   --accent:        #5b4cff;
   --accent-strong: #4436e6;
   --accent-soft:   #7b6fff;
   --accent-wash:   rgba(91, 76, 255, 0.12);
 
-  /* ── Semantic ──────────────────────────────────────────────────────────── */
   --success:      #0f9d6e;
   --success-wash: rgba(15, 157, 110, 0.12);
   --warning:      #b57200;
@@ -26,7 +15,6 @@
   --info:         #2563c9;
   --info-wash:    rgba(37, 99, 201, 0.12);
 
-  /* ── Surfaces (dark is the default identity) ───────────────────────────── */
   --bg:      #0a0a0f;
   --bg-sunk: #07070b;
   --surface: #14141c;
@@ -43,26 +31,20 @@
   --nav-bg: rgba(10, 10, 15, 0.88);
   --overlay: rgba(4, 4, 8, 0.72);
 
-  /* ── Elevation ─────────────────────────────────────────────────────────── */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
   --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.32);
   --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.42);
 
-  /* ── Shape ─────────────────────────────────────────────────────────────── */
   --radius-sm: 8px;
   --radius:    12px;
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  /* ── Motion ────────────────────────────────────────────────────────────── */
-  /* Three speeds only. Anything that needs a different one probably should
-     not be animating. */
   --motion-fast: 140ms;
   --motion-base: 240ms;
   --motion-slow: 380ms;
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
-  /* ── Layout ────────────────────────────────────────────────────────────── */
   --nav-height: 60px;
   --page-max: 1200px;
   --page-pad: 16px;
@@ -97,8 +79,6 @@
 @media (min-width: 640px)  { :root { --page-pad: 24px; } }
 @media (min-width: 1024px) { :root { --page-pad: 32px; } }
 
-/* ══ Base ════════════════════════════════════════════════════════════════ */
-
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -109,7 +89,7 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
-  /* Nothing in the layout should ever need the page to scroll sideways. */
+
   overflow-x: hidden;
 }
 
@@ -130,10 +110,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 input, select, textarea { font: inherit; color: inherit; }
 img, svg, video { display: block; max-width: 100%; }
 ul, ol { list-style: none; }
-
-/* ══ Focus ═══════════════════════════════════════════════════════════════
-   A visible ring on keyboard focus everywhere. :focus-visible keeps it off
-   mouse clicks without hiding it from keyboard users. */
 
 :focus-visible {
   outline: 2px solid var(--accent-soft);
@@ -160,8 +136,6 @@ ul, ol { list-style: none; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* ══ Layout helpers ══════════════════════════════════════════════════════ */
-
 .page { min-height: 100dvh; background: var(--bg); display: flex; flex-direction: column; }
 .container { width: 100%; max-width: var(--page-max); margin: 0 auto; padding: 0 var(--page-pad); }
 .container-narrow { max-width: 760px; }
@@ -172,15 +146,12 @@ ul, ol { list-style: none; }
 .grid-products {
   display: grid;
   gap: 14px;
-  /* Two columns even on a 360px phone; the card is designed to work there. */
+
   grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 44vw, 230px), 1fr));
 }
 
-/* Wide content scrolls inside its own box rather than pushing the page. */
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .scroll-x::-webkit-scrollbar { height: 6px; }
-
-/* ══ Surfaces ════════════════════════════════════════════════════════════ */
 
 .card {
   background: var(--surface);
@@ -200,10 +171,6 @@ ul, ol { list-style: none; }
 }
 
 .divider { height: 1px; background: var(--border); border: 0; }
-
-/* ══ Buttons ═════════════════════════════════════════════════════════════
-   44px minimum height on the default size: comfortable on a phone and the
-   accepted floor for a touch target. */
 
 .btn {
   display: inline-flex;
@@ -255,8 +222,6 @@ ul, ol { list-style: none; }
 }
 .icon-btn:hover { background: var(--surface-hover); color: var(--text); }
 
-/* ══ Forms ═══════════════════════════════════════════════════════════════ */
-
 .field { display: flex; flex-direction: column; gap: 6px; }
 
 .label { font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); }
@@ -269,7 +234,7 @@ ul, ol { list-style: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
-  /* 16px on mobile stops iOS Safari zooming the page on focus. */
+
   font-size: 16px;
   transition: border-color var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease);
 }
@@ -285,8 +250,6 @@ select.input { cursor: pointer; }
 
 .field-error { font-size: 0.8125rem; color: var(--danger); }
 .field-hint  { font-size: 0.8125rem; color: var(--text-subtle); }
-
-/* ══ Badges and pills ════════════════════════════════════════════════════ */
 
 .badge {
   display: inline-flex;
@@ -332,8 +295,6 @@ select.input { cursor: pointer; }
 }
 :root[data-theme='light'] .chip[aria-pressed='true'] { color: var(--accent-strong); }
 
-/* ══ Tables ══════════════════════════════════════════════════════════════ */
-
 .table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .table th {
   text-align: left;
@@ -348,8 +309,6 @@ select.input { cursor: pointer; }
 }
 .table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .table tbody tr:last-child td { border-bottom: 0; }
-
-/* ══ Skeletons ═══════════════════════════════════════════════════════════ */
 
 .skeleton {
   background: linear-gradient(
@@ -379,8 +338,6 @@ select.input { cursor: pointer; }
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
 }
-
-/* ══ Toasts ══════════════════════════════════════════════════════════════ */
 
 .toast-region {
   position: fixed;
@@ -415,14 +372,10 @@ select.input { cursor: pointer; }
 .toast-error   { border-left: 3px solid var(--danger); }
 .toast-info    { border-left: 3px solid var(--accent); }
 
-/* ══ Scrollbars ══════════════════════════════════════════════════════════ */
-
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-
-/* ══ Responsive visibility ═══════════════════════════════════════════════ */
 
 .only-desktop { display: none; }
 .only-mobile  { display: flex; }
@@ -431,11 +384,6 @@ select.input { cursor: pointer; }
   .only-desktop { display: flex; }
   .only-mobile  { display: none; }
 }
-
-/* ══ Reduced motion ══════════════════════════════════════════════════════
-   Honouring the preference at the CSS level as well as in Framer Motion, so
-   nothing animates for someone who asked for stillness. The spinner keeps a
-   slow rotation because a frozen spinner reads as a hung page. */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

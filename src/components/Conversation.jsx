@@ -8,15 +8,6 @@ import { formatRelative, initials } from '../utils/format'
 import { LIMITS } from '../utils/validation'
 import { useReducedMotion, scrollBehavior } from '../hooks/useReducedMotion'
 
-/**
- * A single conversation thread, shared by the customer and seller message
- * screens.
- *
- * Messages arrive over Supabase Realtime, history pages backwards on demand
- * rather than loading a whole thread at once, and read receipts are marked
- * when the thread is opened. Access is not enforced here — a conversation you
- * are not part of returns no rows at all.
- */
 export function Conversation({ conversation, currentUserId, onBack }) {
   const reducedMotion = useReducedMotion()
 
@@ -30,20 +21,15 @@ export function Conversation({ conversation, currentUserId, onBack }) {
   const { status, data, error, retry, setData } = useAsyncData(
     useCallback(async () => {
       const page = await ChatService.listMessages(conversation.id)
-      // Opening a thread is what marks it read; doing it here keeps the
-      // receipt tied to the fetch rather than to a separate effect.
+
       ChatService.markRead(conversation.id, currentUserId)
       return page
     }, [conversation.id, currentUserId])
   )
 
-  // Memoised so the scroll-to-bottom effect below does not see a new array
-  // identity on every render.
   const messages = useMemo(() => data?.messages ?? [], [data])
   const hasMore = data?.hasMore ?? false
 
-  // Live delivery. The guard keeps a message you just sent from appearing
-  // twice when the realtime echo arrives after the insert response.
   useEffect(() => {
     return ChatService.subscribe(conversation.id, (incoming) => {
       setData((current) => {
@@ -93,7 +79,7 @@ export function Conversation({ conversation, currentUserId, onBack }) {
         return { ...current, messages: [...existing, message] }
       })
     } catch (err) {
-      // Put the text back so nothing the person typed is lost.
+
       setDraft(body)
       setSendError(err.message)
     } finally {
@@ -246,7 +232,6 @@ export function Conversation({ conversation, currentUserId, onBack }) {
   )
 }
 
-/** The conversation list beside a thread, or on its own on mobile. */
 export function ConversationList({ conversations, activeId, onSelect, emptyMessage }) {
   if (conversations.length === 0) {
     return (

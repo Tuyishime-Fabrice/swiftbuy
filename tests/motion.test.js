@@ -4,15 +4,8 @@ import {
   listItem, stepVariants, toastItem,
 } from '../src/lib/motion'
 
-/**
- * The animation language has rules, and these tests are what keeps them from
- * drifting as screens get added: three speeds, compositor-friendly properties
- * only, and nothing slow enough to make the interface feel sluggish.
- */
-
 const PRESETS = { fadeIn, riseIn, pageTransition, popIn, modalPanel, drawerPanel, toastItem }
 
-/** Only opacity and transform-backed properties animate. */
 const ALLOWED = new Set(['opacity', 'x', 'y', 'scale', 'rotate', 'height', 'transition'])
 
 describe('the motion vocabulary', () => {

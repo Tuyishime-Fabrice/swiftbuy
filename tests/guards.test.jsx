@@ -14,7 +14,6 @@ vi.mock('../src/lib/supabase', () => ({
   productImageUrl: () => null,
 }))
 
-// Navbar reaches for live counters; the guard behaviour under test does not.
 vi.mock('../src/components/Navbar', () => ({ default: () => <nav /> }))
 
 function renderGuarded(auth, element, { path = '/protected' } = {}) {
@@ -34,14 +33,6 @@ function renderGuarded(auth, element, { path = '/protected' } = {}) {
 }
 
 const secret = <p>Protected content</p>
-
-/**
- * These cover the guard as a user-experience control. The equivalent security
- * guarantees — that a customer cannot read another customer's orders, or
- * promote themselves — are proved against the real policies in
- * supabase/tests/01_security_and_commerce.sql, because that is where they are
- * actually enforced.
- */
 
 describe('ProtectedRoute', () => {
   it('sends a signed-out visitor to sign in', () => {
@@ -79,12 +70,29 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('Storefront')).toBeInTheDocument()
   })
 
-  it('keeps a seller out of admin routes and returns them to their dashboard', () => {
+  it('keeps an approved seller out of admin routes', () => {
     renderGuarded(
-      { user: { id: 's1', role: 'seller', store: { status: 'approved' } } },
+      { user: { id: 's1', role: 'customer', store: { status: 'approved' } } },
       <ProtectedRoute roles={['admin', 'superadmin']}>{secret}</ProtectedRoute>
     )
-    expect(screen.getByText('Seller dashboard')).toBeInTheDocument()
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
+    expect(screen.getByText('Storefront')).toBeInTheDocument()
+  })
+
+  it('lets an approved seller use the customer routes as well', () => {
+    renderGuarded(
+      { user: { id: 's1', role: 'customer', store: { status: 'approved' } } },
+      <ProtectedRoute roles={['customer']}>{secret}</ProtectedRoute>
+    )
+    expect(screen.getByText('Protected content')).toBeInTheDocument()
+  })
+
+  it('lets a pending applicant keep using the customer routes', () => {
+    renderGuarded(
+      { user: { id: 's1', role: 'customer', store: { status: 'pending' } } },
+      <ProtectedRoute roles={['customer']}>{secret}</ProtectedRoute>
+    )
+    expect(screen.getByText('Protected content')).toBeInTheDocument()
   })
 
   it('keeps a plain admin out of nothing an admin route allows', () => {
@@ -95,42 +103,51 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('Protected content')).toBeInTheDocument()
   })
 
-  describe('seller store status', () => {
-    const guarded = (status, reason) =>
+  describe('the seller workspace opens on approval, not on a role', () => {
+    const guarded = (store) =>
       renderGuarded(
-        { user: { id: 's1', role: 'seller', store: { status, statusReason: reason } } },
-        <ProtectedRoute roles={['seller']} requireApprovedSeller>{secret}</ProtectedRoute>
+        { user: { id: 's1', role: 'customer', store } },
+        <ProtectedRoute requireApprovedSeller>{secret}</ProtectedRoute>
       )
 
-    it('explains the wait to a pending seller instead of a permission error', () => {
-      guarded('pending')
+    it('offers the application to a customer who has never applied', () => {
+      guarded(null)
+      expect(screen.getByText(/do not sell on SwiftBuy yet/i)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /apply to sell/i })).toHaveAttribute('href', '/sell/apply')
+      expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
+    })
+
+    it('explains the wait to a pending applicant instead of a permission error', () => {
+      guarded({ status: 'pending' })
       expect(screen.getByText(/awaiting review/i)).toBeInTheDocument()
       expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
     })
 
-    it('shows a rejected seller the reason they were given', () => {
-      guarded('rejected', 'We could not verify the business details.')
+    it('shows a rejected applicant the reason and a way to apply again', () => {
+      guarded({ status: 'rejected', statusReason: 'We could not verify the licence document.' })
       expect(screen.getByText(/not approved/i)).toBeInTheDocument()
-      expect(screen.getByText('We could not verify the business details.')).toBeInTheDocument()
+      expect(screen.getByText('We could not verify the licence document.')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /apply again/i })).toBeInTheDocument()
+      expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
     })
 
     it('tells a suspended seller their listings are hidden', () => {
-      guarded('suspended', 'Repeated unfulfilled orders.')
+      guarded({ status: 'suspended', statusReason: 'Repeated unfulfilled orders.' })
       expect(screen.getByText(/suspended/i)).toBeInTheDocument()
       expect(screen.getByText('Repeated unfulfilled orders.')).toBeInTheDocument()
+      expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
     })
 
     it('lets an approved seller through', () => {
-      guarded('approved')
+      guarded({ status: 'approved' })
       expect(screen.getByText('Protected content')).toBeInTheDocument()
     })
   })
 })
 
 describe('homeFor', () => {
-  it('sends each role to the surface it actually uses', () => {
+  it('sends staff to the dashboard and everyone else to the shop', () => {
     expect(homeFor('customer')).toBe('/')
-    expect(homeFor('seller')).toBe('/seller')
     expect(homeFor('admin')).toBe('/admin')
     expect(homeFor('superadmin')).toBe('/admin')
     expect(homeFor(undefined)).toBe('/')
@@ -163,7 +180,7 @@ describe('useAsyncData', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'))
     act(() => result.current.reload())
-    // A quiet reload keeps the previous content visible while it refetches.
+
     expect(result.current.status).toBe('ready')
     await waitFor(() => expect(result.current.data).toEqual({ call: 2 }))
   })
@@ -184,7 +201,7 @@ describe('useAsyncData', () => {
     const { unmount } = renderHook(() => useAsyncData(fetcher))
 
     unmount()
-    // Resolving after teardown must not warn or update anything.
+
     await act(async () => { resolve({ late: true }) })
   })
 

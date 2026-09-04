@@ -4,11 +4,6 @@ import { motion } from 'framer-motion'
 import { pageTransition } from '../lib/motion'
 import * as Icon from '../components/Icons'
 
-/**
- * The frame for sign-in, registration and password recovery: a single
- * centred card, no navigation to wander off into, and the brand mark linking
- * home so nobody is ever trapped on an auth screen.
- */
 export default function AuthLayout({ title, subtitle, children, footer, width = 440 }) {
   useEffect(() => {
     document.title = title ? `${title} · SwiftBuy` : 'SwiftBuy'

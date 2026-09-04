@@ -1,18 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { assertOk } from '../lib/errors'
 
-/**
- * Cart, wishlist, checkout, orders, fulfilment and payments.
- *
- * The cart stores product references and quantities — never a price. Checkout
- * calls the place_order database function, which reads current prices under a
- * row lock, validates stock, applies the configured commission and delivery
- * fee, and returns the authoritative total. Nothing here computes money that
- * the server then trusts.
- */
-
-// ── Cart ────────────────────────────────────────────────────────────────────
-
 export const CartService = {
   async list(userId) {
     const { data, error } = await supabase
@@ -39,13 +27,12 @@ export const CartService = {
         productId: row.product_id,
         qty: row.qty,
         name: p?.name ?? 'Unavailable product',
-        // Shown as an indicative price; the order total is recomputed server-side.
+
         price: Number(p?.price_rwf ?? 0),
         stock: p?.stock ?? 0,
         sellerId: p?.seller_id ?? null,
         storeName: p?.sellers?.store_name ?? null,
-        // A listing can be delisted or its store suspended while it sits in a
-        // cart, so the UI needs to say so before checkout refuses.
+
         available: Boolean(p?.is_active) && p?.sellers?.status === 'approved' && (p?.stock ?? 0) > 0,
         imagePath: images[0]?.storage_path ?? null,
       }
@@ -61,7 +48,6 @@ export const CartService = {
     return (data ?? []).reduce((sum, row) => sum + row.qty, 0)
   },
 
-  /** Adds to the cart, or increases the quantity if it is already there. */
   async add(userId, productId, qty = 1) {
     const { data: existing } = await supabase
       .from('cart_items')
@@ -101,8 +87,6 @@ export const CartService = {
     assertOk(error, 'clear cart')
   },
 }
-
-// ── Wishlist ────────────────────────────────────────────────────────────────
 
 export const WishlistService = {
   async list(userId) {
@@ -153,7 +137,6 @@ export const WishlistService = {
     return new Set((data ?? []).map((row) => row.product_id))
   },
 
-  /** Returns true when the product ended up saved, false when it was removed. */
   async toggle(userId, productId) {
     const { data: existing } = await supabase
       .from('wishlist_items')
@@ -176,8 +159,6 @@ export const WishlistService = {
   },
 }
 
-// ── Checkout and orders ─────────────────────────────────────────────────────
-
 export const PAYMENT_METHODS = [
   {
     value: 'manual_momo',
@@ -197,10 +178,7 @@ export const PAYMENT_METHODS = [
 ]
 
 export const OrderService = {
-  /**
-   * Places the order. Delivery details and a payment method go in; the order
-   * reference and the server-computed total come back.
-   */
+
   async place({ name, phone, address, paymentProvider, notes }) {
     const { data, error } = await supabase.rpc('place_order', {
       p_delivery_name: name,
@@ -237,7 +215,6 @@ export const OrderService = {
     return (data ?? []).map(mapOrder)
   },
 
-  /** Orders containing at least one line from this seller. */
   async listForSeller(sellerId) {
     const { data, error } = await supabase
       .from('orders')
@@ -252,8 +229,6 @@ export const OrderService = {
       .order('placed_at', { ascending: false })
     assertOk(error, 'load seller orders')
 
-    // RLS has already limited these to orders the seller is on; narrow the
-    // nested arrays to just their own lines and shipment.
     return (data ?? []).map((order) => {
       const mapped = mapOrder(order)
       return {
@@ -350,9 +325,6 @@ function mapOrder(o) {
   }
 }
 
-// ── Fulfilment ──────────────────────────────────────────────────────────────
-
-/** The transitions the database will accept, mirrored here to drive the UI. */
 export const FULFILMENT_FLOW = {
   pending: ['confirmed', 'cancelled'],
   confirmed: ['preparing', 'cancelled'],
@@ -384,8 +356,6 @@ export const ShipmentService = {
   },
 }
 
-// ── Payments ────────────────────────────────────────────────────────────────
-
 export const PAYMENT_LABEL = {
   pending: 'Payment not started',
   initiated: 'Payment arranged',
@@ -397,10 +367,7 @@ export const PAYMENT_LABEL = {
 }
 
 export const PaymentService = {
-  /**
-   * The buyer states that they have paid. This does not settle the order —
-   * it moves the payment to awaiting_confirmation for the seller to verify.
-   */
+
   async declare(orderId, customerReference) {
     const { data, error } = await supabase.rpc('declare_payment', {
       p_order_id: orderId,
@@ -410,7 +377,6 @@ export const PaymentService = {
     return data
   },
 
-  /** Seller or admin confirms the money arrived. */
   async confirm(paymentId, providerTransactionId = null) {
     const { error } = await supabase.rpc('confirm_payment', {
       p_payment_id: paymentId,
@@ -436,8 +402,6 @@ export const PaymentService = {
   },
 }
 
-// ── Reviews ─────────────────────────────────────────────────────────────────
-
 export const ReviewService = {
   async listForProduct(productId) {
     const { data, error } = await supabase
@@ -457,10 +421,6 @@ export const ReviewService = {
     }))
   },
 
-  /**
-   * Only a delivered purchase can be reviewed; the order_item_id is what makes
-   * it a verified purchase, and the database rejects anything else.
-   */
   async submit({ productId, userId, orderItemId, rating, comment }) {
     const { error } = await supabase.from('reviews').insert({
       product_id: productId,
@@ -472,7 +432,6 @@ export const ReviewService = {
     assertOk(error, 'submit review')
   },
 
-  /** Which of this customer's purchased lines have not been reviewed yet. */
   async reviewedItemIds(userId) {
     const { data, error } = await supabase
       .from('reviews')
@@ -482,8 +441,6 @@ export const ReviewService = {
     return new Set((data ?? []).map((r) => r.order_item_id))
   },
 }
-
-// ── Disputes ────────────────────────────────────────────────────────────────
 
 export const DISPUTE_CATEGORIES = [
   { value: 'product_damaged', label: 'The product arrived damaged' },

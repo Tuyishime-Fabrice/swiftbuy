@@ -5,14 +5,6 @@ import Navbar from '../components/Navbar'
 import { pageTransition } from '../lib/motion'
 import * as Icon from '../components/Icons'
 
-/**
- * The seller workspace frame.
- *
- * A rail on desktop; on smaller screens it becomes a horizontal strip of
- * links above the content, because a fixed sidebar on a 360px phone leaves no
- * room for the work itself.
- */
-
 const LINKS = [
   { to: '/seller', label: 'Orders', icon: Icon.Package, end: true },
   { to: '/seller/products', label: 'Products', icon: Icon.Store },
@@ -34,8 +26,7 @@ export default function SellerLayout({ title, children }) {
         className="container"
         style={{ flex: 1, paddingTop: 20, paddingBottom: 48 }}
       >
-        {/* Mobile strip — above the content, because a fixed rail on a 360px
-            screen leaves nothing for the work itself. */}
+
         <nav aria-label="Seller sections" className="only-mobile scroll-x" style={{ marginBottom: 16 }}>
           <div style={{ display: 'inline-flex', gap: 6, minWidth: 'max-content', paddingBottom: 4 }}>
             {LINKS.map(({ to, label, icon: Glyph, end }) => (
@@ -58,7 +49,7 @@ export default function SellerLayout({ title, children }) {
         </nav>
 
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-        {/* Desktop rail */}
+
         <nav
           aria-label="Seller sections"
           className="only-desktop"

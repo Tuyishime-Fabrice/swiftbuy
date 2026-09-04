@@ -14,7 +14,8 @@ import * as Icon from '../../components/Icons'
 import { useAuth } from '../../context/auth-context'
 import { useToast } from '../../context/toast-context'
 import {
-  ProfileService, SellerService, SettingsService, AuditService, SELLER_STATUS_LABEL,
+  ProfileService, SellerService, SettingsService, AuditService,
+  SellerDocumentService, SELLER_STATUS_LABEL, DOCUMENT_TYPE_LABEL,
 } from '../../services/accounts'
 import { OrderService, PaymentService, DisputeService, PAYMENT_LABEL } from '../../services/commerce'
 import { ProductService } from '../../services/products'
@@ -22,18 +23,9 @@ import { formatRwf, formatDateTime, formatDate, initials } from '../../utils/for
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { listContainer, listItem } from '../../lib/motion'
 
-/**
- * The platform dashboard, shared by admins and superadmins.
- *
- * Only sections backed by real functionality are here. There is no "payouts"
- * tab, because SwiftBuy does not move money to sellers — sellers are paid
- * directly by buyers, and the commission ledger records what the platform is
- * owed rather than what it has collected.
- */
-
 const TABS = [
   { key: 'overview', label: 'Overview' },
-  { key: 'sellers', label: 'Sellers' },
+  { key: 'sellers', label: 'Seller applications' },
   { key: 'orders', label: 'Orders' },
   { key: 'users', label: 'Users' },
   { key: 'products', label: 'Products' },
@@ -82,8 +74,6 @@ export default function AdminDashboard() {
     </PageShell>
   )
 }
-
-// ── Overview ────────────────────────────────────────────────────────────────
 
 function OverviewTab() {
   const { status, data, error, retry } = useAsyncData(
@@ -229,8 +219,6 @@ function OverviewTab() {
   )
 }
 
-// ── Sellers ─────────────────────────────────────────────────────────────────
-
 function SellersTab() {
   const toast = useToast()
   const [filter, setFilter] = useState('pending')
@@ -362,6 +350,8 @@ function SellersTab() {
                   )}
                 </div>
               </div>
+
+              <VerificationDocuments sellerId={seller.id} />
             </motion.article>
           ))}
         </motion.div>
@@ -377,6 +367,91 @@ function SellersTab() {
           />
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function VerificationDocuments({ sellerId }) {
+  const toast = useToast()
+  const [opening, setOpening] = useState(null)
+
+  const { status, data } = useAsyncData(
+    useCallback(() => SellerDocumentService.list(sellerId), [sellerId])
+  )
+
+  const documents = data ?? []
+
+  const open = async (document) => {
+    setOpening(document.id)
+    try {
+      const url = await SellerDocumentService.openUrl(document.storagePath)
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setOpening(null)
+    }
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: 14, paddingTop: 12 }}>
+      <p
+        style={{
+          fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em',
+          color: 'var(--text-subtle)', marginBottom: 8,
+        }}
+      >
+        VERIFICATION DOCUMENTS
+      </p>
+
+      {status === 'loading' && (
+        <p style={{ color: 'var(--text-subtle)', fontSize: '0.8125rem' }}>Loading…</p>
+      )}
+
+      {status === 'ready' && documents.length === 0 && (
+        <p style={{ color: 'var(--warning)', fontSize: '0.8125rem' }}>
+          Nothing submitted. Consider asking for a document before approving.
+        </p>
+      )}
+
+      {status === 'error' && (
+        <p style={{ color: 'var(--danger)', fontSize: '0.8125rem' }}>
+          Could not load the documents for this application.
+        </p>
+      )}
+
+      {documents.length > 0 && (
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {documents.map((document) => (
+            <li
+              key={document.id}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
+            >
+              <Icon.Receipt size={15} />
+              <span style={{ fontSize: '0.8125rem', flex: 1, minWidth: 140 }}>
+                {DOCUMENT_TYPE_LABEL[document.docType] ?? document.docType}
+                <span style={{ color: 'var(--text-subtle)' }}>
+                  {document.fileName ? ` · ${document.fileName}` : ''}
+                </span>
+              </span>
+              {document.reviewedAt && (
+                <span className="badge badge-neutral">
+                  Reviewed {formatDate(document.reviewedAt)}
+                </span>
+              )}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => open(document)}
+                disabled={opening === document.id}
+              >
+                {opening === document.id ? <span className="spinner" aria-hidden="true" /> : null}
+                Open
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -447,8 +522,6 @@ function ModerateSellerDialog({ seller, action, onClose, onDone }) {
     </Modal>
   )
 }
-
-// ── Orders ──────────────────────────────────────────────────────────────────
 
 const ORDERS_PER_PAGE = 20
 
@@ -626,8 +699,6 @@ function RefundDialog({ order, onClose, onConfirm }) {
   )
 }
 
-// ── Users ───────────────────────────────────────────────────────────────────
-
 function UsersTab({ currentUserId, isSuperAdmin }) {
   const toast = useToast()
   const [search, setSearch] = useState('')
@@ -635,7 +706,6 @@ function UsersTab({ currentUserId, isSuperAdmin }) {
   const [suspending, setSuspending] = useState(null)
   const [promoting, setPromoting] = useState(null)
 
-  // Debounce the search box so typing a name is one query, not one per letter.
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 250)
     return () => clearTimeout(timer)
@@ -790,8 +860,6 @@ function UsersTab({ currentUserId, isSuperAdmin }) {
   )
 }
 
-// ── Products ────────────────────────────────────────────────────────────────
-
 function ProductsTab() {
   const toast = useToast()
   const [page, setPage] = useState(0)
@@ -885,8 +953,6 @@ function ProductsTab() {
     </div>
   )
 }
-
-// ── Disputes ────────────────────────────────────────────────────────────────
 
 function CasesTab() {
   const toast = useToast()
@@ -1032,8 +1098,6 @@ function ResolveCaseDialog({ dispute, onClose, onDone }) {
   )
 }
 
-// ── Settings ────────────────────────────────────────────────────────────────
-
 function SettingsTab({ isSuperAdmin }) {
   const toast = useToast()
   const [settings, setSettings] = useState(null)
@@ -1154,8 +1218,6 @@ function SettingsTab({ isSuperAdmin }) {
   )
 }
 
-// ── Audit log ───────────────────────────────────────────────────────────────
-
 function AuditTab() {
   const { status, data, error, retry } = useAsyncData(
     useCallback(() => AuditService.list({ limit: 80 }), [])
@@ -1212,7 +1274,6 @@ function AuditTab() {
   )
 }
 
-/** Renders audit metadata without dumping raw JSON at the reader. */
 function formatMetadata(metadata) {
   if (!metadata || Object.keys(metadata).length === 0) return '—'
   return Object.entries(metadata)

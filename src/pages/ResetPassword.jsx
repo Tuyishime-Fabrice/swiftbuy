@@ -7,14 +7,6 @@ import { ProfileService } from '../services/accounts'
 import { supabase } from '../lib/supabase'
 import { validatePassword, collectErrors } from '../utils/validation'
 
-/**
- * Where the emailed reset link lands.
- *
- * Supabase turns the link into a recovery session automatically
- * (detectSessionInUrl), so by the time this page renders the visitor is
- * briefly authenticated and may set a new password — nothing here needs to
- * handle the token itself.
- */
 export default function ResetPassword() {
   const toast = useToast()
   const navigate = useNavigate()

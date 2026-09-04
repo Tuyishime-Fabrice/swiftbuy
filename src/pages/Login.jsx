@@ -42,7 +42,7 @@ export default function Login() {
     }
 
     toast.success(`Welcome back, ${result.user.name.split(' ')[0]}`)
-    // Return them to wherever the guard interrupted, or to their home surface.
+
     const destination = location.state?.from ?? homeFor(result.user.role)
     navigate(destination, { replace: true })
   }

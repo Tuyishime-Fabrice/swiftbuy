@@ -1,15 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-/**
- * A smoke test for the app shell.
- *
- * With no Supabase credentials the app must say so plainly. The previous
- * version silently fell back to a per-browser localStorage store, which made an
- * unconfigured deployment look like a working marketplace — this test is what
- * stops that behaviour coming back.
- */
-
 vi.mock('../src/lib/supabase', () => ({
   supabase: null,
   isConfigured: false,

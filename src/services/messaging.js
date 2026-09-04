@@ -1,16 +1,8 @@
 import { supabase } from '../lib/supabase'
 import { assertOk } from '../lib/errors'
 
-/**
- * Conversations, messages and notifications.
- *
- * Both use Supabase Realtime, because these are the two places where waiting
- * for the user to refresh would be genuinely wrong. Everything else in the app
- * uses ordinary requests.
- */
-
 export const ChatService = {
-  /** Finds the conversation with a seller, opening one if needed. */
+
   async openWithSeller(sellerId) {
     const { data, error } = await supabase.rpc('get_or_create_conversation', {
       p_seller_id: sellerId,
@@ -19,7 +11,6 @@ export const ChatService = {
     return data
   },
 
-  /** Conversation list for either side, newest activity first. */
   async listConversations(userId) {
     const { data, error } = await supabase
       .from('conversations')
@@ -34,7 +25,6 @@ export const ChatService = {
     const rows = data ?? []
     if (rows.length === 0) return []
 
-    // One query for the unread counts rather than one per conversation.
     const { data: unread } = await supabase
       .from('messages')
       .select('conversation_id')
@@ -53,7 +43,7 @@ export const ChatService = {
       sellerId: c.seller_id,
       customerName: c.customer?.full_name ?? 'Customer',
       storeName: c.store?.store_name ?? 'Store',
-      // Whichever side you are not, is who you are talking to.
+
       counterpartName: c.customer_id === userId
         ? (c.store?.store_name ?? 'Store')
         : (c.customer?.full_name ?? 'Customer'),
@@ -62,10 +52,6 @@ export const ChatService = {
     }))
   },
 
-  /**
-   * A page of messages, oldest first for display. `before` walks backwards
-   * through history so a long conversation is not fetched in one go.
-   */
   async listMessages(conversationId, { limit = 30, before = null } = {}) {
     let q = supabase
       .from('messages')
@@ -99,11 +85,10 @@ export const ChatService = {
       .eq('conversation_id', conversationId)
       .neq('sender_id', userId)
       .is('read_at', null)
-    // A failed read receipt should never interrupt reading the conversation.
+
     if (error && import.meta.env.DEV) console.warn('[swiftbuy] mark read:', error.message)
   },
 
-  /** Live messages for one conversation. Returns an unsubscribe function. */
   subscribe(conversationId, onMessage) {
     const channel = supabase
       .channel(`conversation:${conversationId}`)
@@ -159,7 +144,6 @@ export const NotificationService = {
     assertOk(error, 'mark notifications read')
   },
 
-  /** Live notifications for the signed-in user. Returns an unsubscribe function. */
   subscribe(userId, onNotification) {
     const channel = supabase
       .channel(`notifications:${userId}`)

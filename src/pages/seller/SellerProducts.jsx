@@ -20,19 +20,12 @@ import {
 import { listContainer, listItem } from '../../lib/motion'
 import { useAsyncData } from '../../hooks/useAsyncData'
 
-/**
- * The seller's catalogue.
- *
- * Images are uploaded to Supabase Storage and referenced by path — the old
- * version base64-encoded them into a database column, which made every product
- * query drag megabytes of image data with it.
- */
 export default function SellerProducts() {
   const { user } = useAuth()
   const toast = useToast()
 
   const [search, setSearch] = useState('')
-  const [editing, setEditing] = useState(null)   // product object, or 'new'
+  const [editing, setEditing] = useState(null)
   const [delisting, setDelisting] = useState(null)
 
   const { status, data, error, reload, retry } = useAsyncData(
@@ -264,8 +257,6 @@ export default function SellerProducts() {
   )
 }
 
-// ── Product form ────────────────────────────────────────────────────────────
-
 function ProductDialog({ product, categories, sellerId, onClose, onSaved }) {
   const toast = useToast()
   const editing = Boolean(product)
@@ -339,8 +330,6 @@ function ProductDialog({ product, categories, sellerId, onClose, onSaved }) {
         productId = await ProductService.create({ ...form, sellerId })
       }
 
-      // Uploads happen after the row exists, because the storage path includes
-      // the product id and the image row points at the product.
       for (const [index, file] of pendingFiles.entries()) {
         await ImageService.upload({
           file,

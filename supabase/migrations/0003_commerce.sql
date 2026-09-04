@@ -1,16 +1,3 @@
--- ═══════════════════════════════════════════════════════════════════════════
---  SwiftBuy V2 — 0003 Commerce logic
---
---  Everything in this file exists because the browser must not be the source
---  of truth for money or stock. Checkout, cancellation, fulfilment transitions
---  and review eligibility all run inside the database, where the caller's
---  identity comes from the JWT rather than from a request body.
--- ═══════════════════════════════════════════════════════════════════════════
-
--- ── Notification helper ─────────────────────────────────────────────────────
--- Clients cannot insert notifications (no RLS insert policy). Server-side
--- functions raise them through here.
-
 create or replace function public.notify(
   p_user_id uuid, p_kind text, p_title text,
   p_body text default null, p_link text default null
@@ -25,31 +12,16 @@ $$;
 
 revoke all on function public.notify(uuid, text, text, text, text) from public;
 
--- ── Order reference ─────────────────────────────────────────────────────────
--- Human-quotable, sortable, and not guessable enough to enumerate.
-
 create or replace function public.generate_order_reference()
 returns text language sql volatile as $$
   select 'SB-' || to_char(now(), 'YYMMDD') || '-' ||
          upper(substr(encode(gen_random_bytes(4), 'hex'), 1, 6))
 $$;
 
--- ── Commission arithmetic ───────────────────────────────────────────────────
--- Basis points, integer maths, rounded half-up. Commission can never exceed
--- the gross, so a seller's net is never negative.
-
 create or replace function public.calc_commission(p_gross bigint, p_rate_bps int)
 returns bigint language sql immutable as $$
   select least(p_gross, greatest(0, ((p_gross * p_rate_bps) + 5000) / 10000))
 $$;
-
--- ═══════════════════════════════════════════════════════════════════════════
---  place_order — the authoritative checkout
---
---  The client sends delivery details and a payment method. It does NOT send
---  prices, quantities-as-money, or a total: quantities come from the server's
---  own cart rows and prices are read from the products table under a row lock.
--- ═══════════════════════════════════════════════════════════════════════════
 
 create or replace function public.place_order(
   p_delivery_name    text,
@@ -60,9 +32,7 @@ create or replace function public.place_order(
 )
 returns table (order_id uuid, reference text, total_rwf bigint, payment_id uuid)
 language plpgsql security definer set search_path = public as $$
--- The OUT column names above (order_id, reference, total_rwf) also exist as
--- columns on the tables this function writes to. Resolve any such collision in
--- favour of the column; the return values are built from the v_ locals.
+
 #variable_conflict use_column
 declare
   v_user        uuid := auth.uid();
@@ -93,16 +63,13 @@ begin
   if length(trim(coalesce(p_delivery_address, ''))) < 5 then
     raise exception 'A delivery address is required' using errcode = '22023';
   end if;
-  -- 'sandbox' is a development simulator and is refused unless the operator
-  -- has explicitly switched it on for this project (see 0004_payments.sql).
+
   if p_payment_provider = 'sandbox' and not public.sandbox_payments_enabled() then
     raise exception 'Sandbox payments are not enabled on this environment' using errcode = '42501';
   end if;
 
   select * into v_settings from public.platform_settings where id;
 
-  -- Lock every product in the cart in a stable order. Ordering by id keeps two
-  -- concurrent checkouts from deadlocking on overlapping baskets.
   perform 1
   from public.products p
   join public.cart_items ci on ci.product_id = p.id
@@ -115,7 +82,6 @@ begin
     raise exception 'Your cart is empty' using errcode = 'P0001';
   end if;
 
-  -- Validate availability before writing anything.
   for v_line in
     select ci.qty, p.id, p.name, p.stock, p.is_active, p.seller_id, s.status as seller_status
     from public.cart_items ci
@@ -144,7 +110,6 @@ begin
   )
   returning id into v_order_id;
 
-  -- Write the lines using server-side prices, and decrement stock as we go.
   for v_line in
     select ci.qty, p.id as product_id, p.name, p.price_rwf, p.seller_id,
            (select pi.storage_path from public.product_images pi
@@ -178,8 +143,6 @@ begin
         v_line_comm, v_line_total - v_line_comm, v_settings.commission_rate_bps
       );
 
-      -- Stock is decremented here, inside the same transaction as the order,
-      -- so two buyers racing for the last unit cannot both succeed.
       perform set_config('swiftbuy.internal', 'on', true);
       update public.products
          set stock = stock - v_line.qty
@@ -191,11 +154,9 @@ begin
     end;
   end loop;
 
-  -- One shipment per distinct seller: a single checkout, independent fulfilment.
   insert into public.shipments (order_id, seller_id)
   select distinct v_order_id, seller_id from public.order_items where order_id = v_order_id;
 
-  -- Delivery fee comes from platform settings, never from the browser.
   v_delivery := v_settings.delivery_fee_rwf;
   if v_settings.free_delivery_over_rwf is not null
      and v_subtotal >= v_settings.free_delivery_over_rwf then
@@ -211,7 +172,6 @@ begin
          commission_rwf   = v_commission
    where id = v_order_id;
 
-  -- A payment record is opened in 'pending'. Nothing here marks it successful.
   insert into public.payments (
     order_id, provider, status, amount_rwf, transaction_reference
   ) values (
@@ -244,11 +204,6 @@ $$;
 
 revoke all on function public.place_order(text, text, text, public.payment_provider, text) from public;
 grant execute on function public.place_order(text, text, text, public.payment_provider, text) to authenticated;
-
--- ═══════════════════════════════════════════════════════════════════════════
---  cancel_order — customer-initiated, only while nothing has shipped or been
---  paid for. Stock goes back to the shelf.
--- ═══════════════════════════════════════════════════════════════════════════
 
 create or replace function public.cancel_order(p_order_id uuid, p_reason text default null)
 returns void
@@ -314,13 +269,6 @@ $$;
 revoke all on function public.cancel_order(uuid, text) from public;
 grant execute on function public.cancel_order(uuid, text) to authenticated;
 
--- ═══════════════════════════════════════════════════════════════════════════
---  update_shipment_status — the seller's fulfilment control
---
---  Transitions are validated so a shipment cannot jump from 'pending' to
---  'delivered', and cannot move backwards out of a terminal state.
--- ═══════════════════════════════════════════════════════════════════════════
-
 create or replace function public.allowed_fulfilment_transition(
   p_from public.fulfilment_status, p_to public.fulfilment_status
 )
@@ -370,8 +318,6 @@ begin
 
   select * into v_order from public.orders where id = v_ship.order_id;
 
-  -- The order's headline status is derived from its shipments so a
-  -- multi-seller order reads truthfully: delivered only when all parts are.
   perform public.recalculate_order_status(v_ship.order_id);
 
   v_label := case p_status
@@ -397,7 +343,6 @@ $$;
 revoke all on function public.update_shipment_status(uuid, public.fulfilment_status, text) from public;
 grant execute on function public.update_shipment_status(uuid, public.fulfilment_status, text) to authenticated;
 
--- Derive the order-level status from its shipments.
 create or replace function public.recalculate_order_status(p_order_id uuid)
 returns void
 language plpgsql security definer set search_path = public as $$
@@ -440,10 +385,6 @@ $$;
 
 revoke all on function public.recalculate_order_status(uuid) from public;
 
--- ═══════════════════════════════════════════════════════════════════════════
---  Reviews: verified purchases only
--- ═══════════════════════════════════════════════════════════════════════════
-
 create or replace function public.enforce_review_eligibility()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -485,7 +426,6 @@ create trigger reviews_eligibility_trg
   before insert on public.reviews
   for each row execute function public.enforce_review_eligibility();
 
--- Keep the denormalised rating cache on products in step with reviews.
 create or replace function public.refresh_product_rating()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare v_product uuid := coalesce(new.product_id, old.product_id);
@@ -507,13 +447,6 @@ drop trigger if exists reviews_rating_trg on public.reviews;
 create trigger reviews_rating_trg
   after insert or update or delete on public.reviews
   for each row execute function public.refresh_product_rating();
-
--- ═══════════════════════════════════════════════════════════════════════════
---  Storefront search — server-side filtering, sorting and pagination
---
---  The browser never downloads the whole catalogue. This function returns one
---  page plus the total match count so the UI can render pagination honestly.
--- ═══════════════════════════════════════════════════════════════════════════
 
 create or replace function public.search_products(
   p_query       text default null,
@@ -572,10 +505,6 @@ grant execute on function public.search_products(
   text, text, bigint, bigint, numeric, uuid, boolean, text, int, int
 ) to anon, authenticated;
 
--- ── Conversation opener ─────────────────────────────────────────────────────
--- Returns the existing conversation between this customer and seller, or
--- creates one. Keeps the client from having to guess at uniqueness.
-
 create or replace function public.get_or_create_conversation(p_seller_id uuid)
 returns uuid
 language plpgsql security definer set search_path = public as $$
@@ -604,7 +533,6 @@ $$;
 revoke all on function public.get_or_create_conversation(uuid) from public;
 grant execute on function public.get_or_create_conversation(uuid) to authenticated;
 
--- Bump the conversation's ordering key and notify the other participant.
 create or replace function public.on_message_sent()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare

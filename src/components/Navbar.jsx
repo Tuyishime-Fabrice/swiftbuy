@@ -8,16 +8,6 @@ import { popIn, drawerPanel, modalBackdrop, badgePulse } from '../lib/motion'
 import { initials } from '../utils/format'
 import * as Icon from './Icons'
 
-/**
- * The application header.
- *
- * Keeps SwiftBuy's original shape — logo left, primary links centre, actions
- * right, hamburger drawer on mobile — and fixes the things that were wrong
- * underneath: the counters now come from the database for the signed-in user
- * (and update live over Realtime) instead of being recomputed from
- * localStorage on every render.
- */
-
 function Badge({ count }) {
   if (!count) return null
   return (
@@ -78,13 +68,13 @@ function DrawerLink({ to, icon: Glyph, children, onNavigate, end }) {
 }
 
 export default function Navbar() {
-  const { user, signOut, theme, toggleTheme, isCustomer, isSeller, isAdmin } = useAuth()
+  const {
+    user, signOut, theme, toggleTheme,
+    isCustomer, isAdmin, isApprovedSeller, hasSellerApplication, sellerStatus,
+  } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Menus are stamped with the route they were opened on, so navigating away
-  // closes them by derivation instead of an effect that writes state on every
-  // route change.
   const [openMenu, setOpenMenu] = useState({ path: null, which: null })
   const menuOpen = openMenu.which === 'account' && openMenu.path === location.pathname
   const drawerOpen = openMenu.which === 'drawer' && openMenu.path === location.pathname
@@ -102,15 +92,12 @@ export default function Navbar() {
     return { cart, unread }
   }, [user, isCustomer])
 
-  // Recount on navigation: adding to the cart from one page and then moving is
-  // the common case, and this is far cheaper than polling.
   useEffect(() => {
     let cancelled = false
     fetchCounters().then((next) => { if (!cancelled) setCounters(next) })
     return () => { cancelled = true }
   }, [fetchCounters, location.pathname])
 
-  // New notifications arrive over Realtime, so the bell is live.
   useEffect(() => {
     if (!user) return undefined
     return NotificationService.subscribe(user.id, () => {
@@ -118,7 +105,6 @@ export default function Navbar() {
     })
   }, [user])
 
-  // The page behind the drawer must not scroll while it is open.
   useEffect(() => {
     if (!drawerOpen) return undefined
     const { overflow } = document.body.style
@@ -183,11 +169,9 @@ export default function Navbar() {
               <TopLink to="/wishlist">Wishlist</TopLink>
               <TopLink to="/messages">Messages</TopLink>
             </>}
-            {isSeller && <>
-              <TopLink to="/seller" end>Orders</TopLink>
+            {isApprovedSeller && <>
+              <TopLink to="/seller" end>Sell</TopLink>
               <TopLink to="/seller/products">Products</TopLink>
-              <TopLink to="/seller/analytics">Analytics</TopLink>
-              <TopLink to="/seller/chats">Messages</TopLink>
             </>}
             {isAdmin && <TopLink to="/admin">Admin</TopLink>}
           </div>
@@ -269,16 +253,35 @@ export default function Navbar() {
                         <div style={{ padding: '8px 10px 10px', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>
                           <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{user.name}</p>
                           <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem' }}>{user.email}</p>
-                          <span className="badge badge-accent" style={{ marginTop: 6 }}>
-                            {user.role === 'seller' && user.store
-                              ? `Seller · ${user.store.status}`
-                              : user.role}
-                          </span>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                            <span className="badge badge-accent">{user.role}</span>
+                            {hasSellerApplication && (
+                              <span
+                                className={
+                                  isApprovedSeller ? 'badge badge-success'
+                                    : sellerStatus === 'pending' ? 'badge badge-warning'
+                                    : 'badge badge-danger'
+                                }
+                              >
+                                Store · {sellerStatus}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <MenuLink to="/profile" icon={Icon.User}>My profile</MenuLink>
                         {isCustomer && <MenuLink to="/orders" icon={Icon.Package}>My orders</MenuLink>}
-                        {isSeller && <MenuLink to="/seller/store" icon={Icon.Store}>Store settings</MenuLink>}
+                        {isApprovedSeller && <>
+                          <MenuLink to="/seller" icon={Icon.Package}>Seller dashboard</MenuLink>
+                          <MenuLink to="/seller/store" icon={Icon.Settings}>Store settings</MenuLink>
+                        </>}
+                        {isCustomer && (
+                          <MenuLink to="/sell/apply" icon={Icon.Store}>
+                            {!hasSellerApplication ? 'Sell on SwiftBuy'
+                              : isApprovedSeller ? 'My seller application'
+                              : `Seller application · ${sellerStatus}`}
+                          </MenuLink>
+                        )}
                         {isAdmin && <MenuLink to="/admin" icon={Icon.Shield}>Admin dashboard</MenuLink>}
 
                         <hr className="divider" style={{ margin: '4px 0' }} />
@@ -353,8 +356,20 @@ export default function Navbar() {
                   <p style={{ fontWeight: 600 }}>{user.name}</p>
                   <p style={{ color: 'var(--text-subtle)', fontSize: '0.8125rem' }}>{user.email}</p>
                   <span className="badge badge-accent" style={{ marginTop: 6 }}>
-                    {user.role === 'seller' && user.store ? `Seller · ${user.store.status}` : user.role}
+                    {user.role}
                   </span>
+                  {hasSellerApplication && (
+                    <span
+                      className={
+                        isApprovedSeller ? 'badge badge-success'
+                          : sellerStatus === 'pending' ? 'badge badge-warning'
+                          : 'badge badge-danger'
+                      }
+                      style={{ marginTop: 6, marginLeft: 6 }}
+                    >
+                      Store · {sellerStatus}
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -370,13 +385,21 @@ export default function Navbar() {
                   <DrawerLink to="/messages" icon={Icon.Chat} onNavigate={closeDrawer}>Messages</DrawerLink>
                 </>}
 
-                {isSeller && <>
-                  <DrawerLink to="/seller" icon={Icon.Package} onNavigate={closeDrawer} end>Orders</DrawerLink>
-                  <DrawerLink to="/seller/products" icon={Icon.Store} onNavigate={closeDrawer}>Products</DrawerLink>
+                {isApprovedSeller && <>
+                  <DrawerLink to="/seller" icon={Icon.Package} onNavigate={closeDrawer} end>Seller orders</DrawerLink>
+                  <DrawerLink to="/seller/products" icon={Icon.Store} onNavigate={closeDrawer}>My products</DrawerLink>
                   <DrawerLink to="/seller/analytics" icon={Icon.Chart} onNavigate={closeDrawer}>Analytics</DrawerLink>
-                  <DrawerLink to="/seller/chats" icon={Icon.Chat} onNavigate={closeDrawer}>Messages</DrawerLink>
+                  <DrawerLink to="/seller/chats" icon={Icon.Chat} onNavigate={closeDrawer}>Customer messages</DrawerLink>
                   <DrawerLink to="/seller/store" icon={Icon.Settings} onNavigate={closeDrawer}>Store settings</DrawerLink>
                 </>}
+
+                {isCustomer && (
+                  <DrawerLink to="/sell/apply" icon={Icon.Store} onNavigate={closeDrawer}>
+                    {!hasSellerApplication ? 'Sell on SwiftBuy'
+                      : isApprovedSeller ? 'My seller application'
+                      : `Seller application · ${sellerStatus}`}
+                  </DrawerLink>
+                )}
 
                 {isAdmin && (
                   <DrawerLink to="/admin" icon={Icon.Shield} onNavigate={closeDrawer}>Admin dashboard</DrawerLink>

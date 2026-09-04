@@ -4,13 +4,6 @@ import { motion } from 'framer-motion'
 import { modalBackdrop, modalPanel, listContainer, listItem } from '../lib/motion'
 import * as Icon from './Icons'
 
-/* ══════════════════════════════════════════════════════════════════════════
-   Shared building blocks. Every page draws from here so spacing, states and
-   motion stay consistent, and a fix in one place fixes the whole app.
-   ══════════════════════════════════════════════════════════════════════════ */
-
-// ── Page furniture ──────────────────────────────────────────────────────────
-
 export function PageHeader({ title, subtitle, actions, back }) {
   return (
     <header
@@ -53,12 +46,6 @@ export function SectionTitle({ children, action }) {
   )
 }
 
-// ── Feedback states ─────────────────────────────────────────────────────────
-
-/**
- * Empty states always name the next useful action. "Nothing here" alone
- * leaves the person stuck.
- */
 export function EmptyState({ icon: Glyph = Icon.Package, title, description, action }) {
   return (
     <div
@@ -87,7 +74,6 @@ export function EmptyState({ icon: Glyph = Icon.Package, title, description, act
   )
 }
 
-/** A failure the person can do something about, with a way to retry. */
 export function ErrorState({ title = 'Something went wrong', description, onRetry, action }) {
   return (
     <div
@@ -155,8 +141,6 @@ export function InlineNotice({ tone = 'info', title, children, action }) {
   )
 }
 
-// ── Loading ─────────────────────────────────────────────────────────────────
-
 export function Spinner({ label = 'Loading' }) {
   return (
     <div style={{ display: 'grid', placeItems: 'center', padding: 48, color: 'var(--accent)' }}>
@@ -166,10 +150,6 @@ export function Spinner({ label = 'Loading' }) {
   )
 }
 
-/**
- * Skeletons match the shape of what is loading, so the layout does not jump
- * when the real content lands.
- */
 export function ProductGridSkeleton({ count = 8 }) {
   return (
     <div className="grid-products" aria-hidden="true">
@@ -209,8 +189,6 @@ export function StatSkeleton({ count = 4 }) {
     </div>
   )
 }
-
-// ── Data display ────────────────────────────────────────────────────────────
 
 export function StatCard({ label, value, hint, tone = 'accent', icon: Glyph }) {
   const colour = {
@@ -260,7 +238,7 @@ export function StatGrid({ children }) {
 }
 
 const STATUS_TONE = {
-  // Orders
+
   pending: ['badge-warning', 'Pending'],
   confirmed: ['badge-info', 'Confirmed'],
   processing: ['badge-info', 'Processing'],
@@ -269,20 +247,20 @@ const STATUS_TONE = {
   delivered: ['badge-success', 'Delivered'],
   cancelled: ['badge-neutral', 'Cancelled'],
   refunded: ['badge-neutral', 'Refunded'],
-  // Fulfilment
+
   preparing: ['badge-info', 'Preparing'],
   ready_for_pickup: ['badge-info', 'Ready for pickup'],
   in_transit: ['badge-info', 'On the way'],
-  // Payments
+
   initiated: ['badge-warning', 'Arranged'],
   awaiting_confirmation: ['badge-warning', 'Awaiting confirmation'],
   successful: ['badge-success', 'Paid'],
   failed: ['badge-danger', 'Not verified'],
-  // Sellers
+
   approved: ['badge-success', 'Approved'],
   rejected: ['badge-danger', 'Rejected'],
   suspended: ['badge-danger', 'Suspended'],
-  // Disputes
+
   opened: ['badge-warning', 'Open'],
   under_review: ['badge-info', 'Under review'],
   seller_response: ['badge-info', 'Seller replied'],
@@ -319,12 +297,6 @@ export function Rating({ value = 0, count, size = 14, showEmpty = false }) {
   )
 }
 
-// ── Forms ───────────────────────────────────────────────────────────────────
-
-/**
- * A labelled field. The label is genuinely associated with the control and
- * errors are announced, so this works with a screen reader as well as by eye.
- */
 export function Field({ label, error, hint, required, children, htmlFor }) {
   const generated = useId()
   const id = htmlFor ?? generated
@@ -348,7 +320,6 @@ export function Field({ label, error, hint, required, children, htmlFor }) {
   )
 }
 
-/** A button that shows its own progress and cannot be double-submitted. */
 export function SubmitButton({ loading, children, loadingLabel, className = 'btn btn-primary', ...rest }) {
   return (
     <button type="submit" className={className} disabled={loading || rest.disabled} {...rest}>
@@ -396,13 +367,6 @@ export function QuantityStepper({ value, min = 1, max, onChange, label = 'Quanti
   )
 }
 
-// ── Overlays ────────────────────────────────────────────────────────────────
-
-/**
- * A modal dialog that behaves like one: focus moves inside on open, Escape
- * closes it, the page behind it does not scroll, and focus returns to
- * whatever opened it.
- */
 export function Modal({ title, description, onClose, children, width = 480, footer }) {
   const panelRef = useRef(null)
   const previouslyFocused = useRef(null)
@@ -426,7 +390,6 @@ export function Modal({ title, description, onClose, children, width = 480, foot
       }
       if (event.key !== 'Tab') return
 
-      // Keep Tab inside the dialog while it is open.
       const items = panelRef.current?.querySelectorAll(
         'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
       )
@@ -508,7 +471,6 @@ export function Modal({ title, description, onClose, children, width = 480, foot
   )
 }
 
-/** Destructive actions ask first, and say exactly what will happen. */
 export function ConfirmDialog({ title, message, confirmLabel = 'Confirm', tone = 'danger', onConfirm, onCancel, loading }) {
   return (
     <Modal
@@ -536,8 +498,6 @@ export function ConfirmDialog({ title, message, confirmLabel = 'Confirm', tone =
     </Modal>
   )
 }
-
-// ── Navigation ──────────────────────────────────────────────────────────────
 
 export function Tabs({ tabs, active, onChange, label = 'Sections' }) {
   return (

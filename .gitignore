@@ -2,7 +2,6 @@ node_modules/
 dist/
 coverage/
 
-# Environment files hold project credentials; only .env.example is committed.
 .env
 .env.*
 !.env.example

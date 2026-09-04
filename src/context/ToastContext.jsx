@@ -4,13 +4,6 @@ import { toastItem } from '../lib/motion'
 import * as Icon from '../components/Icons'
 import { ToastContext } from './toast-context'
 
-/**
- * Transient feedback.
- *
- * The region is a polite live region, so a screen reader announces the message
- * without interrupting; errors are assertive because they usually mean the
- * thing the person just tried did not happen.
- */
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
   const timers = useRef(new Map())
@@ -26,7 +19,7 @@ export function ToastProvider({ children }) {
 
   const toast = useCallback((message, tone = 'info', { duration } = {}) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    // Errors linger: they usually need reading, not glancing at.
+
     const life = duration ?? (tone === 'error' ? 6000 : 3600)
 
     setToasts((current) => [...current.slice(-3), { id, message, tone }])
@@ -91,4 +84,3 @@ export function ToastProvider({ children }) {
     </ToastContext.Provider>
   )
 }
-

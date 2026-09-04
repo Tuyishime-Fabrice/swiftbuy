@@ -13,14 +13,6 @@ import { formatRwf } from '../utils/format'
 import { listItem } from '../lib/motion'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/**
- * The cart.
- *
- * The figures here are an estimate and the page says so: the authoritative
- * total is calculated by the database when the order is placed, from prices
- * read at that moment. If a seller changes a price between now and checkout,
- * the order reflects the real one.
- */
 export default function Cart() {
   const { user } = useAuth()
   const toast = useToast()
@@ -40,7 +32,7 @@ export default function Cart() {
 
   const changeQty = async (item, qty) => {
     setBusy(item.cartItemId)
-    // Optimistic: the stepper should feel immediate, and a failure reloads.
+
     setData((current) => ({
       ...current,
       items: current.items.map((i) => (i.cartItemId === item.cartItemId ? { ...i, qty } : i)),

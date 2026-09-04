@@ -8,10 +8,6 @@ import { useAuth } from '../../context/auth-context'
 import { ChatService } from '../../services/messaging'
 import { useAsyncData } from '../../hooks/useAsyncData'
 
-/**
- * The seller's side of customer messaging. Same conversation component the
- * customer uses — the participants differ, the behaviour does not.
- */
 export default function SellerChats() {
   const { conversationId } = useParams()
   const { user } = useAuth()

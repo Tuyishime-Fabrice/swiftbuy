@@ -1,12 +1,3 @@
-/**
- * Client-side validation.
- *
- * These rules mirror the CHECK constraints and function guards in
- * supabase/migrations — they exist to give fast, specific feedback in the
- * form, not to be the enforcement point. The database rejects bad input
- * regardless of what the browser does with it.
- */
-
 export const LIMITS = {
   nameMin: 2,
   nameMax: 120,
@@ -19,13 +10,19 @@ export const LIMITS = {
   reviewMax: 2000,
   messageMax: 4000,
   imageBytes: 5 * 1024 * 1024,
+  documentBytes: 10 * 1024 * 1024,
+  storeNameMin: 2,
+  storeNameMax: 120,
 }
 
 export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
 
+export const ACCEPTED_DOCUMENT_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'application/pdf',
+]
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-// Rwandan numbers are usually written +250 7XX XXX XXX; spaces, dashes and
-// brackets are tolerated because that is how people actually type them.
+
 const PHONE = /^\+?[0-9 ()-]{7,20}$/
 
 export function validateEmail(value) {
@@ -119,10 +116,25 @@ export function validateImageFile(file) {
   return null
 }
 
-/**
- * Collects field errors into one object; an empty object means the form is
- * valid. Keeps form components from repeating the same null-filtering.
- */
+export function validateStoreName(value) {
+  const name = value?.trim() ?? ''
+  if (!name) return 'Store name is required'
+  if (name.length < LIMITS.storeNameMin) return 'Store name is too short'
+  if (name.length > LIMITS.storeNameMax) return 'Store name is too long'
+  return null
+}
+
+export function validateDocumentFile(file) {
+  if (!file) return 'Choose a file'
+  if (!ACCEPTED_DOCUMENT_TYPES.includes(file.type)) {
+    return 'Documents must be a PDF or a JPEG, PNG or WebP image'
+  }
+  if (file.size > LIMITS.documentBytes) {
+    return `Documents must be smaller than ${Math.round(LIMITS.documentBytes / 1024 / 1024)} MB`
+  }
+  return null
+}
+
 export function collectErrors(fields) {
   return Object.fromEntries(
     Object.entries(fields).filter(([, error]) => Boolean(error))

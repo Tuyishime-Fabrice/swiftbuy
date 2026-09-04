@@ -5,8 +5,7 @@ export default defineConfig({
   plugins: [react()],
 
   build: {
-    // Recharts is only reached from the two analytics screens, so keeping it in
-    // its own chunk stops a shopper paying to download a charting library.
+
     chunkSizeWarningLimit: 400,
   },
 

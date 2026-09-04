@@ -2,20 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-/**
- * Contract tests between the service layer and the database.
- *
- * A typo in a column name or an RPC argument is invisible to the linter, to the
- * type system (there isn't one) and to the build — it only shows up as a
- * runtime error against a live project. These tests read the migrations, read
- * the services, and assert that every table, column, relationship, function and
- * function argument the app asks for actually exists.
- *
- * If a migration renames something, this fails before anyone deploys.
- */
-
-// process.cwd() is the project root under Vitest; import.meta.url is rewritten
-// by the dev server's /@fs prefix and is not a usable filesystem path here.
 const root = process.cwd()
 const migrationsDir = join(root, 'supabase/migrations')
 const servicesDir = join(root, 'src/services')
@@ -26,9 +12,6 @@ const migrationSql = readdirSync(migrationsDir)
   .map((f) => readFileSync(join(migrationsDir, f), 'utf8'))
   .join('\n')
 
-// ── Parse the schema out of the migrations ──────────────────────────────────
-
-/** table name → Set of column names */
 function parseTables(sql) {
   const tables = new Map()
   const re = /create table if not exists public\.(\w+)\s*\(([\s\S]*?)\n\);/g
@@ -39,7 +22,7 @@ function parseTables(sql) {
     for (const rawLine of body.split('\n')) {
       const line = rawLine.trim()
       if (!line || line.startsWith('--')) continue
-      // Skip table-level constraints, which start with a keyword not a name.
+
       if (/^(unique|primary key|foreign key|check|constraint)\b/i.test(line)) continue
       const column = line.match(/^(\w+)\s+/)
       if (column) columns.add(column[1])
@@ -49,7 +32,6 @@ function parseTables(sql) {
   return tables
 }
 
-/** view name → Set of column aliases */
 function parseViews(sql) {
   const views = new Map()
   const re = /create or replace view public\.(\w+)[\s\S]*?as\s*select([\s\S]*?)from/g
@@ -66,7 +48,6 @@ function parseViews(sql) {
   return views
 }
 
-/** function name → ordered list of parameter names */
 function parseFunctions(sql) {
   const functions = new Map()
   const re = /create or replace function public\.(\w+)\s*\(([\s\S]*?)\)\s*\n?returns/g
@@ -81,7 +62,6 @@ function parseFunctions(sql) {
   return functions
 }
 
-/** Splits on commas that are not inside brackets. */
 function splitTopLevel(text) {
   const parts = []
   let depth = 0
@@ -104,17 +84,14 @@ const tables = parseTables(migrationSql)
 const views = parseViews(migrationSql)
 const functions = parseFunctions(migrationSql)
 
-// ── Parse what the services ask for ─────────────────────────────────────────
-
 const serviceFiles = readdirSync(servicesDir)
   .filter((f) => f.endsWith('.js'))
   .map((f) => ({ name: f, source: readFileSync(join(servicesDir, f), 'utf8') }))
 
-/** Every `.from('table')` call, with the file it appears in. */
 function collectTableRefs() {
   const refs = []
   for (const { name, source } of serviceFiles) {
-    // Storage buckets are addressed with .from() too; skip those.
+
     const re = /(?<!storage\s*\n?\s*)\.from\('(\w+)'\)/g
     let match
     while ((match = re.exec(source)) !== null) {
@@ -126,7 +103,6 @@ function collectTableRefs() {
   return refs
 }
 
-/** Every `.rpc('fn', { ... })` call with its argument names. */
 function collectRpcCalls() {
   const calls = []
   for (const { name, source } of serviceFiles) {
@@ -144,11 +120,10 @@ function collectRpcCalls() {
   return calls
 }
 
-/** Column names used in `.eq('col', …)`, `.order('col')` and friends. */
 function collectColumnFilters() {
   const filters = []
   for (const { name, source } of serviceFiles) {
-    // Associate each filter with the nearest preceding .from('table').
+
     const re = /\.from\('(\w+)'\)([\s\S]*?)(?=\n\s*(?:const|return|assertOk|\}\s*,?\s*$)|$)/g
     let match
     while ((match = re.exec(source)) !== null) {
@@ -163,12 +138,6 @@ function collectColumnFilters() {
   return filters
 }
 
-
-/**
- * Every `.select(...)` in the services, paired with the table it reads from.
- * PostgREST embeds related rows as `relation ( columns )`, optionally aliased
- * as `alias:relation!constraint`, so the parser resolves those and recurses.
- */
 function collectSelects() {
   const selects = []
   for (const { name, source } of serviceFiles) {
@@ -181,7 +150,6 @@ function collectSelects() {
   return selects
 }
 
-/** Splits a PostgREST select list into bare columns and embedded relations. */
 function parseSelect(body) {
   const columns = []
   const embeds = []
@@ -206,7 +174,7 @@ function parseSelect(body) {
     if (!part) continue
     const embed = part.match(/^([\w:!]+)\s*\(([\s\S]*)\)$/)
     if (embed) {
-      // alias:table!constraint → table
+
       const target = embed[1].includes(':') ? embed[1].split(':')[1] : embed[1]
       embeds.push({ relation: target.split('!')[0], body: embed[2] })
     } else if (/^\w+$/.test(part)) {
@@ -216,7 +184,6 @@ function parseSelect(body) {
   return { columns, embeds }
 }
 
-/** Recursively checks a select list against the parsed schema. */
 function checkSelect(table, body, problems, path = table) {
   const known = tables.get(table) ?? views.get(table)
   if (!known) {
@@ -237,8 +204,6 @@ const tableRefs = collectTableRefs()
 const rpcCalls = collectRpcCalls()
 const columnFilters = collectColumnFilters()
 const selects = collectSelects()
-
-// ── The tests ───────────────────────────────────────────────────────────────
 
 describe('the migrations parse into a schema', () => {
   it('finds the tables the app depends on', () => {
@@ -298,7 +263,7 @@ describe('every column the services select exists, including embedded rows', () 
   })
 
   it('checked every select in the service layer', () => {
-    // One per query; if this drops, the regex above has stopped matching.
+
     expect(selects.length).toBeGreaterThanOrEqual(15)
   })
 })
@@ -336,7 +301,7 @@ describe('the storage buckets the services write to are declared', () => {
         [...source.matchAll(/storage\s*\n?\s*\.from\('([\w-]+)'\)/g)].map((m) => m[1])
       )
     )
-    // The client module also names buckets when building public URLs.
+
     const clientSource = readFileSync(join(root, 'src/lib/supabase.js'), 'utf8')
     for (const m of clientSource.matchAll(/\.from\('([\w-]+)'\)/g)) used.add(m[1])
 

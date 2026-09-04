@@ -1,12 +1,3 @@
--- ═══════════════════════════════════════════════════════════════════════════
---  SwiftBuy V2 — 0006 Disputes
---
---  Buyer protection. A customer can raise a problem against a delivered or
---  in-flight order; the seller responds; an admin resolves it. Resolving a
---  dispute in the customer's favour does not move money by itself — refunds
---  are recorded explicitly through public.record_refund (0004_payments.sql).
--- ═══════════════════════════════════════════════════════════════════════════
-
 do $$ begin
   create type public.dispute_category as enum (
     'product_damaged', 'wrong_product', 'missing_product',
@@ -49,7 +40,6 @@ alter table public.disputes enable row level security;
 alter table public.disputes force row level security;
 select public.drop_policies('disputes');
 
--- Only the three parties involved can see a dispute exists.
 create policy "disputes: customer read own" on public.disputes
   for select using (auth.uid() = customer_id);
 
@@ -58,9 +48,6 @@ create policy "disputes: seller read own" on public.disputes
 
 create policy "disputes: admin read" on public.disputes
   for select using (public.is_admin());
-
--- Writes go through the functions below so that status transitions, notices
--- and the audit trail stay consistent.
 
 create or replace function public.open_dispute(
   p_order_id      uuid,

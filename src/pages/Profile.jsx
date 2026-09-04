@@ -10,14 +10,6 @@ import {
   validateFullName, validatePhone, validatePassword, collectErrors,
 } from '../utils/validation'
 
-/**
- * Account settings.
- *
- * Notice what is not here: no role selector, and no email field. The role is
- * not self-service — the database refuses to change it from a profile update —
- * and the email is the authentication identity, changed through Supabase Auth
- * with a confirmation step, not by editing a text box.
- */
 export default function Profile() {
   const { user, refresh } = useAuth()
   const toast = useToast()

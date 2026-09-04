@@ -1,20 +1,3 @@
-/**
- * Turning backend failures into something a person can act on.
- *
- * PostgREST surfaces PostgreSQL errors with their SQLSTATE code, and the
- * server-side functions in supabase/migrations raise deliberate codes:
- *
- *   42501  not allowed (RLS refused, or a function checked the caller's role)
- *   P0001  a business rule said no ("Only 3 left in stock")
- *   P0002  the thing being acted on does not exist
- *   22023  the input was invalid
- *   23505  a uniqueness rule was broken
- *
- * Messages raised by our own functions are already written for humans, so they
- * are passed straight through. Anything else gets a plain-language stand-in
- * rather than leaking a constraint name into the UI.
- */
-
 export const ErrorKind = {
   AUTH: 'auth',
   PERMISSION: 'permission',
@@ -37,7 +20,6 @@ const FALLBACK = {
   [ErrorKind.SERVER]: 'Something went wrong on our side. Please try again.',
 }
 
-/** Messages our own database functions raise are already user-facing. */
 function isAuthoredMessage(code) {
   return ['P0001', 'P0002', '22023', '42501'].includes(code)
 }
@@ -45,7 +27,6 @@ function isAuthoredMessage(code) {
 export function classifyError(error) {
   if (!error) return null
 
-  // A fetch that never reached the server has no PostgREST shape.
   if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
     return { kind: ErrorKind.NETWORK, message: FALLBACK[ErrorKind.NETWORK] }
   }
@@ -65,11 +46,6 @@ export function classifyError(error) {
   return { kind, message, code, raw }
 }
 
-/**
- * Consistent handling for a Supabase call. Logs the technical detail for
- * developers, hands a readable message back to the caller, and never swallows
- * a failure silently.
- */
 export function handleError(error, context) {
   const classified = classifyError(error)
   if (!classified) return null
@@ -79,7 +55,6 @@ export function handleError(error, context) {
   return classified
 }
 
-/** Throws a readable Error for a failed Supabase response. */
 export function assertOk(error, context) {
   if (!error) return
   const classified = handleError(error, context)

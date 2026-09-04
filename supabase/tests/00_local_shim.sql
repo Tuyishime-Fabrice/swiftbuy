@@ -1,19 +1,10 @@
--- ═══════════════════════════════════════════════════════════════════════════
---  LOCAL TEST SHIM — not part of the deployed schema
---
---  Supabase provides `auth` and `storage` for you. To run the migrations and
---  the RLS test-suite against a plain PostgreSQL instance in CI, this file
---  recreates just enough of them: the roles, auth.users, auth.uid(), and the
---  storage bucket/object tables the policies reference.
---
---  Never run this against a Supabase project.
--- ═══════════════════════════════════════════════════════════════════════════
-
 do $$ begin create role anon nologin;          exception when duplicate_object then null; end $$;
 do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
 do $$ begin create role service_role nologin bypassrls; exception when duplicate_object then null; end $$;
 
 grant anon, authenticated, service_role to postgres;
+
+\echo 'LOCAL TEST SHIM: stand-ins for Supabase auth and storage. Never run this against a Supabase project.'
 
 create schema if not exists auth;
 create schema if not exists storage;
@@ -25,8 +16,6 @@ create table if not exists auth.users (
   created_at         timestamptz not null default now()
 );
 
--- Mirrors Supabase: the caller's identity comes from the request JWT claims,
--- which the test-suite sets with set_config('request.jwt.claims', ...).
 create or replace function auth.uid() returns uuid
 language sql stable as $$
   select nullif(

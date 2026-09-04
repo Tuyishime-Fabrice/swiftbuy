@@ -15,15 +15,6 @@ import { SellerService, SettingsService } from '../../services/accounts'
 import { formatRwf } from '../../utils/format'
 import { useAsyncData } from '../../hooks/useAsyncData'
 
-/**
- * Seller analytics.
- *
- * Every figure here is labelled with what it actually counts. "Settled" means
- * a payment a seller confirmed receiving; "ordered" means placed but not
- * necessarily paid. Charts only render when there is data behind them — an
- * empty chart with invented axes would be worse than saying there is nothing
- * to show yet.
- */
 export default function SellerAnalytics() {
   const { user } = useAuth()
 
@@ -49,7 +40,6 @@ export default function SellerAnalytics() {
     [orders]
   )
 
-  /** Settled revenue by day, over the last 30 days that have any. */
   const revenueSeries = useMemo(() => {
     const byDay = new Map()
     for (const order of paidOrders) {
@@ -66,7 +56,6 @@ export default function SellerAnalytics() {
       }))
   }, [paidOrders])
 
-  /** Units sold per product, across all orders regardless of payment. */
   const topProducts = useMemo(() => {
     const byProduct = new Map()
     for (const order of orders) {

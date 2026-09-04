@@ -6,14 +6,6 @@ import { listItem, DURATION, EASE } from '../lib/motion'
 import { Rating } from './UI'
 import * as Icon from './Icons'
 
-/**
- * The storefront product card.
- *
- * Keeps the original SwiftBuy layout — image, category, name, rating, price,
- * add-to-cart — and tightens the details: real stock states instead of a raw
- * count, a wishlist control that is a labelled button, a CDN-resized image,
- * and lazy loading so a long grid does not fetch everything at once.
- */
 export function ProductCard({ product, onAddToCart, onToggleWishlist, wishlisted, busy }) {
   const state = stockState(product.stock)
   const outOfStock = state === 'out_of_stock'

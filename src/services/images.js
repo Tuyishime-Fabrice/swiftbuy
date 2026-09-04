@@ -2,16 +2,6 @@ import { supabase } from '../lib/supabase'
 import { assertOk } from '../lib/errors'
 import { validateImageFile } from '../utils/validation'
 
-/**
- * Product image uploads.
- *
- * Files go to Supabase Storage; only the object path is written to the
- * database. The bucket itself enforces a size cap and a MIME allow-list, and
- * its policies require the first path segment to be the uploading seller's
- * own id — so a client that skips this module still cannot write into
- * somebody else's folder.
- */
-
 const BUCKET = 'product-images'
 
 function extensionFor(file) {
@@ -21,7 +11,7 @@ function extensionFor(file) {
 }
 
 export const ImageService = {
-  /** Uploads one image and records it against the product. */
+
   async upload({ file, sellerId, productId, position = 0, isPrimary = false }) {
     const problem = validateImageFile(file)
     if (problem) throw new Error(problem)
@@ -33,8 +23,6 @@ export const ImageService = {
       .upload(path, file, { cacheControl: '31536000', upsert: false, contentType: file.type })
     assertOk(uploadError, 'upload product image')
 
-    // If two images claim primary the unique index would reject the second, so
-    // the existing primary is stood down first.
     if (isPrimary) {
       await supabase
         .from('product_images')
@@ -56,7 +44,7 @@ export const ImageService = {
       .single()
 
     if (error) {
-      // Do not leave an orphaned object behind if the row could not be written.
+
       await supabase.storage.from(BUCKET).remove([path])
       assertOk(error, 'record product image')
     }

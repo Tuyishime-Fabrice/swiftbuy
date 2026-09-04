@@ -1,11 +1,3 @@
-/**
- * The icon set. Line icons on a 24px grid, inheriting currentColor so they
- * pick up whatever the surrounding element is coloured.
- *
- * They are decorative by default (aria-hidden). When an icon carries the
- * meaning on its own — an icon-only button — label the button, not the icon.
- */
-
 function Svg({ size = 20, children, ...rest }) {
   return (
     <svg

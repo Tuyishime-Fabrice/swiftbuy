@@ -1,15 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { assertOk } from '../lib/errors'
 
-/**
- * Catalogue reads and seller catalogue management.
- *
- * Storefront listing goes through the search_products database function so
- * filtering, sorting and pagination happen in PostgreSQL. The browser fetches
- * one page at a time and is told the total match count — it never downloads
- * the whole catalogue to filter it in JavaScript.
- */
-
 export const SORTS = [
   { value: 'newest', label: 'Newest first' },
   { value: 'price_asc', label: 'Price: low to high' },
@@ -39,7 +30,7 @@ function mapSearchRow(row) {
 }
 
 export const ProductService = {
-  /** One page of the storefront, filtered and sorted by the database. */
+
   async search({
     query = '',
     category = null,
@@ -69,7 +60,7 @@ export const ProductService = {
     const rows = data ?? []
     return {
       items: rows.map(mapSearchRow),
-      // count(*) over () rides along on every row; zero rows means zero matches.
+
       total: rows.length ? Number(rows[0].total_count) : 0,
       page,
       pageSize,
@@ -124,7 +115,6 @@ export const ProductService = {
     }
   },
 
-  /** A seller's own catalogue, including listings they have deactivated. */
   async listForSeller(sellerId) {
     const { data, error } = await supabase
       .from('products')
@@ -188,10 +178,6 @@ export const ProductService = {
     assertOk(error, 'update product')
   },
 
-  /**
-   * Delisting rather than deleting: order history references the product, and
-   * a hard delete would strip a customer's past purchases of their link.
-   */
   async delist(id) {
     const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id)
     assertOk(error, 'delist product')
@@ -202,7 +188,6 @@ export const ProductService = {
     assertOk(error, 'relist product')
   },
 
-  /** Platform merchandising — the RPC refuses anyone who is not an admin. */
   async setFeatured(id, featured) {
     const { error } = await supabase.rpc('set_product_featured', {
       p_product_id: id,

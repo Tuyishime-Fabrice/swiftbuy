@@ -22,8 +22,7 @@ export default function ForgotPassword() {
     setLoading(true)
     await requestPasswordReset(email)
     setLoading(false)
-    // Always the same outcome, whether or not the address has an account —
-    // otherwise this form becomes a way to test which emails are registered.
+
     setSent(true)
   }
 

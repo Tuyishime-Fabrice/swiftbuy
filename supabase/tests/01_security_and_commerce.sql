@@ -1,16 +1,3 @@
--- ═══════════════════════════════════════════════════════════════════════════
---  SwiftBuy V2 — security and commerce test suite
---
---  Runs against a database that has the local shim + every migration applied
---  (see supabase/tests/run.sh). Each check either passes silently or aborts
---  the run with a message naming the guarantee that broke.
---
---  What is being proved here is the set of claims the README makes: a customer
---  cannot promote themselves, a seller cannot touch another seller's catalogue
---  or self-approve, prices and stock come from the server, and a buyer cannot
---  declare their own payment settled.
--- ═══════════════════════════════════════════════════════════════════════════
-
 \set ON_ERROR_STOP on
 \pset tuples_only on
 \pset format unaligned
@@ -19,8 +6,6 @@ set client_min_messages = notice;
 create schema if not exists tests;
 grant usage on schema tests to anon, authenticated;
 
--- Impersonate a signed-in user exactly the way PostgREST does: set the JWT
--- claims and drop to the `authenticated` role so RLS applies.
 create or replace function tests.as_user(p_id uuid)
 returns void language plpgsql as $$
 begin
@@ -45,7 +30,6 @@ begin
   raise notice '  ok  %', p_what;
 end $$;
 
--- Assert that a statement is refused. Used for every "must not be able to" rule.
 create or replace function tests.denied(p_sql text, p_what text)
 returns void language plpgsql as $$
 begin
@@ -59,10 +43,6 @@ begin
 end $$;
 
 grant execute on all functions in schema tests to anon, authenticated;
-
--- ═══════════════════════════════════════════════════════════════════════════
---  Fixtures
--- ═══════════════════════════════════════════════════════════════════════════
 
 truncate auth.users cascade;
 
@@ -79,16 +59,13 @@ insert into auth.users (id, email, raw_user_meta_data) values
    '{"full_name":"Platform Admin","role":"customer"}'),
   ('66666666-6666-6666-6666-666666666666', 'root@example.test',
    '{"full_name":"Platform Root","role":"customer"}'),
-  -- Deliberately asks for admin at signup; must not get it.
+
   ('77777777-7777-7777-7777-777777777777', 'sneaky@example.test',
    '{"full_name":"Sneaky Person","role":"superadmin"}');
 
--- Bootstrap the two staff accounts the way an operator would: directly in SQL,
--- once, with service-level access.
 update public.profiles set role = 'admin'      where id = '55555555-5555-5555-5555-555555555555';
 update public.profiles set role = 'superadmin' where id = '66666666-6666-6666-6666-666666666666';
 
--- Commission and delivery configuration under test: 7% and a 2,000 RWF fee.
 update public.platform_settings set commission_rate_bps = 700, delivery_fee_rwf = 2000;
 
 \echo ''
@@ -99,14 +76,111 @@ select tests.ok(
   'signup metadata cannot grant an admin role');
 
 select tests.ok(
-  (select role from public.profiles where id = '33333333-3333-3333-3333-333333333333') = 'seller',
-  'seller signup gets the seller role');
+  (select role from public.profiles where id = '33333333-3333-3333-3333-333333333333') = 'customer',
+  'registering always creates a customer, whatever the metadata asks for');
 
 select tests.ok(
-  (select status from public.sellers where id = '33333333-3333-3333-3333-333333333333') = 'pending',
-  'a new store starts in pending, not approved');
+  not exists (select 1 from public.sellers),
+  'registering does not open a store — selling has to be applied for');
 
--- ═══════════════════════════════════════════════════════════════════════════
+\echo ''
+\echo '── Applying to sell ──────────────────────────────────────────────────'
+
+begin;
+select tests.as_user('33333333-3333-3333-3333-333333333333');
+
+select tests.denied(
+  $$select public.apply_to_sell('X')$$,
+  'an application needs a real store name');
+
+select tests.denied(
+  $$select public.apply_to_sell('Gigi Electronics', null, 'not a phone')$$,
+  'an application rejects an invalid Mobile Money number');
+
+select public.apply_to_sell(
+  'Gigi Electronics', 'Phones and accessories', '+250780000001', 'Gigi Iwenga',
+  'Bank of Kigali', '1234567890');
+
+select tests.ok(
+  (select status from public.sellers where id = auth.uid()) = 'pending',
+  'applying opens the store in pending, never approved');
+
+select tests.ok(
+  (select role from public.profiles where id = auth.uid()) = 'customer',
+  'applying does not change the applicant''s role — they stay a customer');
+
+select tests.denied(
+  $$select public.apply_to_sell('Gigi Electronics Again')$$,
+  'a second application cannot be opened while one is under review');
+
+select tests.ok(
+  exists (select 1 from public.notifications
+          where user_id = auth.uid() and kind = 'seller.applied'),
+  'the applicant is told their application was submitted');
+
+reset role;
+select tests.ok(
+  exists (select 1 from public.notifications
+          where user_id = '55555555-5555-5555-5555-555555555555'
+            and kind = 'seller.application_received'),
+  'administrators are notified that an application is waiting');
+
+select tests.ok(
+  exists (select 1 from public.audit_logs where action = 'seller.applied'),
+  'the application is written to the audit log');
+rollback;
+
+begin;
+select tests.as_user('33333333-3333-3333-3333-333333333333');
+select public.apply_to_sell('Gigi Electronics', null, '+250780000001', 'Gigi Iwenga');
+reset role;
+select tests.as_user('44444444-4444-4444-4444-444444444444');
+select public.apply_to_sell('Rival Store');
+reset role;
+commit;
+
+\echo ''
+\echo '── Verification documents ────────────────────────────────────────────'
+
+begin;
+select tests.as_user('33333333-3333-3333-3333-333333333333');
+insert into public.seller_documents (seller_id, doc_type, storage_path, file_name)
+values (auth.uid(), 'business_licence',
+        '33333333-3333-3333-3333-333333333333/licence.pdf', 'licence.pdf');
+
+select tests.ok(
+  (select count(*) from public.seller_documents) = 1,
+  'an applicant can attach a verification document to their application');
+
+select tests.denied(
+  $$insert into public.seller_documents (seller_id, doc_type, storage_path)
+    values (auth.uid(), 'passport', 'x/y.pdf')$$,
+  'a document must use one of the supported categories');
+
+select tests.denied(
+  $$insert into public.seller_documents (seller_id, doc_type, storage_path)
+    values ('44444444-4444-4444-4444-444444444444', 'identity', 'x/y.pdf')$$,
+  'an applicant cannot attach a document to somebody else''s application');
+reset role;
+
+select tests.as_user('22222222-2222-2222-2222-222222222222');
+select tests.ok(
+  (select count(*) from public.seller_documents) = 0,
+  'an unrelated customer cannot read a seller''s verification documents');
+select tests.ok(
+  (select count(*) from public.seller_application_documents(
+     '33333333-3333-3333-3333-333333333333')) = 0,
+  'nor reach them through the review function');
+reset role;
+
+select tests.as_user('55555555-5555-5555-5555-555555555555');
+select tests.ok(
+  (select count(*) from public.seller_application_documents(
+     '33333333-3333-3333-3333-333333333333')) = 1,
+  'an administrator can see the documents before deciding');
+reset role;
+rollback;
+
 begin;
 \echo ''
 \echo '── A customer cannot escalate their own privileges ────────────────────'
@@ -118,7 +192,6 @@ select tests.ok(
   (select role from public.profiles where id = '11111111-1111-1111-1111-111111111111') = 'customer',
   'a self-update cannot change your own role');
 
--- RLS filters rather than errors, so the proof is that nothing changed.
 update public.profiles set full_name = 'Hijacked', role = 'admin'
  where id = '22222222-2222-2222-2222-222222222222';
 select tests.ok(
@@ -133,7 +206,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 begin;
 \echo ''
 \echo '── A seller cannot approve their own store ────────────────────────────'
@@ -157,7 +229,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Admin approves the stores (the supported path) ─────────────────────'
 
@@ -182,7 +253,6 @@ select tests.ok(
             and kind = 'seller.status'),
   'approving a seller notifies them');
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Catalogue ownership ───────────────────────────────────────────────'
 
@@ -233,7 +303,6 @@ select tests.ok(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Storefront visibility ─────────────────────────────────────────────'
 
@@ -262,7 +331,95 @@ select tests.ok(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
+\echo ''
+\echo '── The decision decides what a seller can do ─────────────────────────'
+
+begin;
+select tests.as_user('55555555-5555-5555-5555-555555555555');
+select public.apply_to_sell('Admin Side Hustle');
+select tests.denied(
+  $$select public.set_seller_status('55555555-5555-5555-5555-555555555555', 'approved')$$,
+  'an administrator cannot decide their own seller application');
+reset role;
+rollback;
+
+begin;
+select tests.as_user('33333333-3333-3333-3333-333333333333');
+insert into public.seller_documents (seller_id, doc_type, storage_path, file_name)
+values (auth.uid(), 'business_licence', '33333333-3333-3333-3333-333333333333/l.pdf', 'l.pdf');
+reset role;
+
+select tests.as_user('55555555-5555-5555-5555-555555555555');
+select public.set_seller_status(
+  '33333333-3333-3333-3333-333333333333', 'rejected', 'The document was not legible.');
+reset role;
+
+select tests.ok(
+  (select reviewed_at is not null and reviewed_by = '55555555-5555-5555-5555-555555555555'
+     from public.seller_documents
+    where seller_id = '33333333-3333-3333-3333-333333333333' limit 1),
+  'reaching a decision records that the documents were reviewed');
+
+select tests.ok(
+  (select status_reason from public.sellers where id = '33333333-3333-3333-3333-333333333333')
+    = 'The document was not legible.',
+  'the reason is stored so the applicant can read it');
+
+select tests.ok(
+  not exists (select 1 from public.products
+              where seller_id = '33333333-3333-3333-3333-333333333333' and is_active),
+  'a rejected store''s listings leave the storefront');
+
+select tests.as_user('33333333-3333-3333-3333-333333333333');
+select tests.denied(
+  $$insert into public.products (seller_id, name, price_rwf, stock)
+    values (auth.uid(), 'Listing After Rejection', 1000, 5)$$,
+  'a rejected applicant cannot list products');
+
+select public.apply_to_sell('Gigi Electronics', 'Clearer documents this time');
+select tests.ok(
+  (select status from public.sellers where id = auth.uid()) = 'pending',
+  'a rejected applicant can correct their details and apply again');
+select tests.ok(
+  (select status_reason from public.sellers where id = auth.uid()) is null,
+  're-applying clears the previous rejection reason');
+reset role;
+rollback;
+
+\echo ''
+\echo '── Applying to sell does not cost you your customer account ──────────'
+
+begin;
+select tests.as_user('22222222-2222-2222-2222-222222222222');
+select public.apply_to_sell('Bosco Bikes');
+insert into public.cart_items (user_id, product_id, qty)
+values (auth.uid(), 'aaaaaaaa-0000-0000-0000-000000000002', 1);
+
+create temp table pending_shop as
+select * from public.place_order(
+  'Bosco Habimana', '+250 780 000 002', 'Kigali', 'manual_momo', null);
+
+select tests.ok(
+  (select total_rwf from pending_shop) > 0,
+  'an applicant keeps shopping normally while their store is under review');
+reset role;
+rollback;
+
+begin;
+select tests.as_user('44444444-4444-4444-4444-444444444444');
+insert into public.cart_items (user_id, product_id, qty)
+values (auth.uid(), 'aaaaaaaa-0000-0000-0000-000000000002', 1);
+
+create temp table seller_shop as
+select * from public.place_order(
+  'Rival Seller', '+250 780 000 004', 'Kigali', 'manual_momo', null);
+
+select tests.ok(
+  (select total_rwf from seller_shop) > 0,
+  'an approved seller can still buy from other stores as a customer');
+reset role;
+rollback;
+
 \echo ''
 \echo '── Cart privacy ──────────────────────────────────────────────────────'
 
@@ -285,7 +442,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Checkout: the server owns the money ───────────────────────────────'
 
@@ -307,7 +463,6 @@ create temp table placed as
 select * from public.place_order(
   'Amina Uwase', '+250 780 000 000', 'KK 243 St, Kigali', 'manual_momo', null);
 
--- 980,000 × 2 + 22,000 = 1,982,000 subtotal, + 2,000 delivery = 1,984,000.
 select tests.ok(
   (select total_rwf from placed) = 1984000,
   'the order total is computed from server-side prices plus the configured fee');
@@ -316,7 +471,6 @@ select tests.ok(
   (select subtotal_rwf from public.orders where id = (select order_id from placed)) = 1982000,
   'the subtotal matches the catalogue prices, not anything the client sent');
 
--- 7% of 1,982,000 = 138,740.
 select tests.ok(
   (select commission_rwf from public.orders where id = (select order_id from placed)) = 138740,
   'platform commission is calculated at the configured rate');
@@ -345,7 +499,6 @@ select tests.ok(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Checkout refuses to oversell ──────────────────────────────────────'
 
@@ -370,7 +523,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Multi-seller order splits into per-seller shipments ───────────────'
 
@@ -399,7 +551,6 @@ select tests.ok(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Payments: a buyer cannot settle their own order ───────────────────'
 
@@ -421,7 +572,6 @@ select tests.denied(
   $$select public.confirm_payment((select payment_id from pay))$$,
   'a buyer cannot confirm their own payment');
 
--- The supported path: declare, then let the seller verify.
 select public.declare_payment((select order_id from pay), 'MP240101.1234.A56789');
 select tests.ok(
   (select status from public.payments where id = (select payment_id from pay))
@@ -464,7 +614,6 @@ select tests.ok(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Sandbox payments are refused unless explicitly enabled ────────────'
 
@@ -479,7 +628,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Fulfilment transitions ────────────────────────────────────────────'
 
@@ -526,7 +674,6 @@ select tests.ok(
   'an order reads delivered once every shipment is delivered');
 reset role;
 
--- ── Reviews ride on that delivered shipment ────────────────────────────────
 \echo ''
 \echo '── Reviews require a delivered purchase ──────────────────────────────'
 
@@ -559,7 +706,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Order and message privacy ─────────────────────────────────────────'
 
@@ -601,7 +747,7 @@ reset role;
 select tests.as_user('33333333-3333-3333-3333-333333333333');
 select tests.ok((select count(*) from public.messages) = 1,
   'the seller sees messages addressed to them');
--- Marking a message read is allowed; changing its text is silently pinned.
+
 update public.messages set body = 'Rewritten', read_at = now()
  where id = (select id from public.messages limit 1);
 select tests.ok(
@@ -618,7 +764,6 @@ select tests.ok((select count(*) from public.conversations) = 0,
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Role administration ───────────────────────────────────────────────'
 
@@ -641,7 +786,6 @@ select tests.denied(
 reset role;
 rollback;
 
--- ═══════════════════════════════════════════════════════════════════════════
 \echo ''
 \echo '── Commission arithmetic ─────────────────────────────────────────────'
 

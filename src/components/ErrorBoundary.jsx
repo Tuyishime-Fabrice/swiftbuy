@@ -1,10 +1,5 @@
 import { Component } from 'react'
 
-/**
- * Catches a render-time crash so a single broken component does not leave the
- * visitor staring at a blank page. The technical detail is logged for
- * developers; the person sees a way forward.
- */
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)

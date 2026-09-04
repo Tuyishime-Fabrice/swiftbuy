@@ -1,13 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { assertOk } from '../lib/errors'
-
-/**
- * Profiles, stores, platform settings and the audit trail.
- *
- * Every privileged action here is a call to a database function that checks
- * the caller's role for itself. Nothing in this file grants permission; it
- * only asks.
- */
+import { validateDocumentFile } from '../utils/validation'
 
 export const SELLER_STATUS_LABEL = {
   pending: 'Pending review',
@@ -15,6 +8,18 @@ export const SELLER_STATUS_LABEL = {
   rejected: 'Rejected',
   suspended: 'Suspended',
 }
+
+export const DOCUMENT_TYPES = [
+  { value: 'business_licence', label: 'Business or licence document' },
+  { value: 'identity', label: 'Identity document' },
+  { value: 'other', label: 'Other supporting document' },
+]
+
+export const DOCUMENT_TYPE_LABEL = Object.fromEntries(
+  DOCUMENT_TYPES.map((t) => [t.value, t.label])
+)
+
+const DOCUMENT_BUCKET = 'seller-documents'
 
 export const ProfileService = {
   async get(userId) {
@@ -37,7 +42,6 @@ export const ProfileService = {
     assertOk(error, 'update profile')
   },
 
-  /** Changing the password goes through Supabase Auth, not the profiles table. */
   async changePassword(newPassword) {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     assertOk(error, 'change password')
@@ -65,7 +69,6 @@ export const ProfileService = {
     assertOk(error, 'update account status')
   },
 
-  /** Superadmin only — the function refuses everyone else. */
   async setRole(userId, role) {
     const { error } = await supabase.rpc('set_user_role', { p_user_id: userId, p_role: role })
     assertOk(error, 'change role')
@@ -139,7 +142,6 @@ export const SellerService = {
     }))
   },
 
-  /** Admin moderation — approve, reject or suspend a store. */
   async setStatus(sellerId, status, reason = null) {
     const { error } = await supabase.rpc('set_seller_status', {
       p_seller_id: sellerId,
@@ -149,10 +151,6 @@ export const SellerService = {
     assertOk(error, 'update seller status')
   },
 
-  /**
-   * Settled earnings only: the view joins commissions to confirmed payments,
-   * so nothing here counts money that has not actually been received.
-   */
   async earnings(sellerId) {
     const { data, error } = await supabase
       .from('seller_earnings')
@@ -166,6 +164,109 @@ export const SellerService = {
       commission: Number(data?.commission_rwf ?? 0),
       net: Number(data?.net_rwf ?? 0),
     }
+  },
+}
+
+export const SellerApplicationService = {
+  async mine() {
+    const { data, error } = await supabase.rpc('my_seller_application')
+    assertOk(error, 'load seller application')
+
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) return null
+    return {
+      id: row.seller_id,
+      storeName: row.store_name,
+      description: row.description,
+      status: row.status,
+      statusReason: row.status_reason,
+      momoNumber: row.momo_number,
+      momoName: row.momo_name,
+      bankName: row.bank_name,
+      bankAccount: row.bank_account,
+      appliedAt: row.applied_at,
+      approvedAt: row.approved_at,
+      documentCount: row.document_count ?? 0,
+    }
+  },
+
+  async submit({ storeName, description, momoNumber, momoName, bankName, bankAccount }) {
+    const { data, error } = await supabase.rpc('apply_to_sell', {
+      p_store_name: storeName,
+      p_description: description || null,
+      p_momo_number: momoNumber || null,
+      p_momo_name: momoName || null,
+      p_bank_name: bankName || null,
+      p_bank_account: bankAccount || null,
+    })
+    assertOk(error, 'submit seller application')
+    return data
+  },
+}
+
+export const SellerDocumentService = {
+  async list(sellerId) {
+    const { data, error } = await supabase.rpc('seller_application_documents', {
+      p_seller_id: sellerId,
+    })
+    assertOk(error, 'load verification documents')
+    return (data ?? []).map((d) => ({
+      id: d.id,
+      docType: d.doc_type,
+      storagePath: d.storage_path,
+      fileName: d.file_name,
+      reviewedAt: d.reviewed_at,
+      createdAt: d.created_at,
+    }))
+  },
+
+  async upload({ file, sellerId, docType }) {
+    const problem = validateDocumentFile(file)
+    if (problem) throw new Error(problem)
+
+    const extension = file.name?.split('.').pop()?.toLowerCase()
+    const suffix = extension && /^[a-z0-9]{2,5}$/.test(extension)
+      ? extension
+      : (file.type === 'application/pdf' ? 'pdf' : 'jpg')
+    const path = `${sellerId}/${crypto.randomUUID()}.${suffix}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(DOCUMENT_BUCKET)
+      .upload(path, file, { upsert: false, contentType: file.type })
+    assertOk(uploadError, 'upload verification document')
+
+    const { data, error } = await supabase
+      .from('seller_documents')
+      .insert({
+        seller_id: sellerId,
+        doc_type: docType,
+        storage_path: path,
+        file_name: file.name ?? null,
+      })
+      .select('id, doc_type, storage_path, file_name, reviewed_at, created_at')
+      .single()
+
+    if (error) {
+      await supabase.storage.from(DOCUMENT_BUCKET).remove([path])
+      assertOk(error, 'record verification document')
+    }
+    return data
+  },
+
+  async remove({ documentId, storagePath }) {
+    const { error } = await supabase.from('seller_documents').delete().eq('id', documentId)
+    assertOk(error, 'remove verification document')
+    if (storagePath) {
+      await supabase.storage.from(DOCUMENT_BUCKET).remove([storagePath])
+    }
+  },
+
+  async openUrl(storagePath) {
+    const { data, error } = await supabase.storage
+      .from(DOCUMENT_BUCKET)
+      .createSignedUrl(storagePath, 120)
+    assertOk(error, 'open verification document')
+    return data?.signedUrl ?? null
   },
 }
 
@@ -193,7 +294,6 @@ export const SettingsService = {
     }
   },
 
-  /** Superadmin only; RLS refuses anyone else. */
   async update({ commissionRateBps, deliveryFee, freeDeliveryOver, lowStockThreshold }) {
     const patch = {}
     if (commissionRateBps !== undefined) patch.commission_rate_bps = commissionRateBps

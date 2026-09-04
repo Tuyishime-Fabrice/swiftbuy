@@ -10,7 +10,6 @@ import { formatRelative } from '../utils/format'
 import { listContainer, listItem } from '../lib/motion'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/** Icon per notification kind, so the list is scannable at a glance. */
 const KIND_ICON = {
   'order.placed': Icon.Package,
   'order.received': Icon.Store,
@@ -35,7 +34,6 @@ export default function Notifications() {
 
   const items = data ?? []
 
-  // New notifications land here live rather than waiting for a refresh.
   useEffect(() => {
     if (!user) return undefined
     return NotificationService.subscribe(user.id, (incoming) => {

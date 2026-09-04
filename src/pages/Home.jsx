@@ -15,15 +15,6 @@ import { listContainer, riseIn } from '../lib/motion'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { formatRwf } from '../utils/format'
 
-/**
- * The storefront.
- *
- * Filtering, sorting and paging all happen in PostgreSQL through the
- * search_products function — the browser holds one page at a time. Filter
- * state lives in the URL so a filtered view can be shared, bookmarked, and
- * survives the back button.
- */
-
 const PRICE_CEILING = 2_000_000
 
 export default function Home() {
@@ -37,8 +28,6 @@ export default function Home() {
   const [busyProduct, setBusyProduct] = useState(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
-  // The search box is typed into constantly; the query only runs once typing
-  // pauses, so a five-letter search is one request rather than five.
   const [searchDraft, setSearchDraft] = useState(params.get('q') ?? '')
   const debounce = useRef(null)
 
@@ -65,9 +54,6 @@ export default function Home() {
     CategoryService.list().then(setCategories).catch(() => setCategories([]))
   }, [])
 
-  // The results carry the filters they were fetched for. Comparing that to the
-  // filters now in the URL tells us a new search is in flight without storing a
-  // separate loading flag.
   const filterKey = JSON.stringify({ query, category, maxPrice, inStock, sort, page })
 
   const { status, data, error, retry } = useAsyncData(
@@ -95,7 +81,7 @@ export default function Home() {
 
   const addToCart = async (product) => {
     if (!user) return navigate('/login', { state: { from: '/' } })
-    if (!isCustomer) return toast.info('Switch to a customer account to shop.')
+    if (!isCustomer) return toast.info('Administrator accounts cannot place orders.')
 
     setBusyProduct(product.id)
     try {
@@ -110,7 +96,7 @@ export default function Home() {
 
   const toggleWishlist = async (product) => {
     if (!user) return navigate('/login', { state: { from: '/' } })
-    if (!isCustomer) return toast.info('Switch to a customer account to save products.')
+    if (!isCustomer) return toast.info('Administrator accounts cannot save products.')
 
     try {
       const saved = await WishlistService.toggle(user.id, product.id)
@@ -155,7 +141,6 @@ export default function Home() {
         signedIn={Boolean(user)}
       />
 
-      {/* Category chips: the fastest way into the catalogue on a phone. */}
       <nav aria-label="Categories" className="scroll-x" style={{ margin: '24px 0 20px' }}>
         <div style={{ display: 'inline-flex', gap: 8, minWidth: 'max-content', paddingBottom: 4 }}>
           <button
@@ -301,14 +286,6 @@ export default function Home() {
   )
 }
 
-// ── Hero ────────────────────────────────────────────────────────────────────
-
-/**
- * The claims here are all things the platform actually does: sellers really
- * are reviewed before they can list, reviews really do require a delivered
- * purchase, and money really is calculated server-side. Nothing about being
- * the biggest or the fastest, because none of that is measurable here.
- */
 function Hero({ searchDraft, onSearchChange, onClear, signedIn }) {
   return (
     <motion.section
@@ -388,7 +365,7 @@ function Hero({ searchDraft, onSearchChange, onClear, signedIn }) {
       {!signedIn && (
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 22, flexWrap: 'wrap' }}>
           <Link to="/register" className="btn btn-primary">Create an account</Link>
-          <Link to="/register?role=seller" className="btn btn-outline">Sell on SwiftBuy</Link>
+          <Link to="/register?intent=sell" className="btn btn-outline">Sell on SwiftBuy</Link>
         </div>
       )}
 
@@ -413,8 +390,6 @@ function TrustPoint({ icon: Glyph, children }) {
     </li>
   )
 }
-
-// ── Filters ─────────────────────────────────────────────────────────────────
 
 function FilterControls({ categories, category, sort, maxPrice, inStock, onChange, onClear }) {
   return (
@@ -483,8 +458,6 @@ function FilterControls({ categories, category, sort, maxPrice, inStock, onChang
     </div>
   )
 }
-
-// ── How it works ────────────────────────────────────────────────────────────
 
 function HowItWorks() {
   const steps = [

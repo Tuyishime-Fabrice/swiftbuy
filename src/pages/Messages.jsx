@@ -8,14 +8,6 @@ import { useAuth } from '../context/auth-context'
 import { ChatService } from '../services/messaging'
 import { useAsyncData } from '../hooks/useAsyncData'
 
-/**
- * The customer's messages.
- *
- * Two panes on desktop, one at a time on mobile — the list until a thread is
- * chosen, then the thread with a back button. The URL carries the active
- * conversation so a thread can be linked to directly, which is how the
- * product page opens a chat with a seller.
- */
 export default function Messages() {
   const { conversationId } = useParams()
   const { user } = useAuth()
@@ -41,7 +33,7 @@ export default function Messages() {
             overflow: 'hidden', background: 'var(--surface)',
           }}
         >
-          {/* List pane — hidden on mobile once a thread is open. */}
+
           <div
             className={active ? 'only-desktop' : undefined}
             style={{
@@ -75,7 +67,6 @@ export default function Messages() {
             </div>
           </div>
 
-          {/* Thread pane */}
           <div style={{ flex: 1, minWidth: 0, display: active ? 'flex' : 'none', flexDirection: 'column' }}>
             {active && (
               <Conversation
@@ -86,7 +77,6 @@ export default function Messages() {
             )}
           </div>
 
-          {/* Desktop placeholder when nothing is selected. */}
           {!active && conversations.length > 0 && (
             <div className="only-desktop" style={{ flex: 1, placeItems: 'center' }}>
               <EmptyState

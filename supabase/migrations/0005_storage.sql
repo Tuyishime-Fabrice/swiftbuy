@@ -1,20 +1,3 @@
--- ═══════════════════════════════════════════════════════════════════════════
---  SwiftBuy V2 — 0005 Storage buckets and object policies
---
---  Product photos are files, not database columns. They live in Supabase
---  Storage; the database keeps only the object path (public.product_images).
---
---  Path convention — the first folder segment is always the owning user's id,
---  which is what the policies below key on:
---      product-images/<seller_id>/<product_id>/<uuid>.<ext>
---      profile-images/<user_id>/<uuid>.<ext>
---      seller-documents/<seller_id>/<uuid>.<ext>
--- ═══════════════════════════════════════════════════════════════════════════
-
--- ── Buckets ─────────────────────────────────────────────────────────────────
--- Size and MIME allow-lists are enforced by Storage itself, so a hostile
--- client cannot upload a 40 MB executable by skipping the React form.
-
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'product-images', 'product-images', true, 5242880,
@@ -35,8 +18,6 @@ on conflict (id) do update
       file_size_limit = excluded.file_size_limit,
       allowed_mime_types = excluded.allowed_mime_types;
 
--- Verification documents are never public: only the seller who uploaded them
--- and platform admins can read them, and only via a signed URL.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'seller-documents', 'seller-documents', false, 10485760,
@@ -46,8 +27,6 @@ on conflict (id) do update
   set public = excluded.public,
       file_size_limit = excluded.file_size_limit,
       allowed_mime_types = excluded.allowed_mime_types;
-
--- ── Object policies ─────────────────────────────────────────────────────────
 
 do $$
 declare r record;
@@ -61,8 +40,6 @@ begin
   end loop;
 end $$;
 
--- Product images: world-readable (they are the storefront), writable only
--- inside the uploading seller's own folder.
 create policy "swiftbuy: product images are public"
   on storage.objects for select
   using (bucket_id = 'product-images');
@@ -93,7 +70,6 @@ create policy "swiftbuy: sellers delete their own product images"
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
 
--- Avatars: public to read, private to write.
 create policy "swiftbuy: profile images are public"
   on storage.objects for select
   using (bucket_id = 'profile-images');
@@ -109,7 +85,6 @@ create policy "swiftbuy: users manage their own avatar"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Verification documents: the owner and admins, nobody else.
 create policy "swiftbuy: seller documents are private"
   on storage.objects for select to authenticated
   using (
@@ -131,14 +106,10 @@ create policy "swiftbuy: sellers delete their own documents"
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
 
--- ── Seller verification documents ───────────────────────────────────────────
--- Records what a seller submitted so an admin can review it before approving
--- the store. The file itself stays in the private bucket above.
-
 create table if not exists public.seller_documents (
   id           uuid primary key default gen_random_uuid(),
   seller_id    uuid not null references public.sellers(id) on delete cascade,
-  doc_type     text not null check (doc_type in ('national_id', 'business_registration', 'tin_certificate', 'other')),
+  doc_type     text not null check (doc_type in ('business_licence', 'identity', 'other')),
   storage_path text not null,
   file_name    text,
   reviewed_at  timestamptz,

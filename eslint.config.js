@@ -24,8 +24,6 @@ export default [
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
 
-      // Component names are capitalised; so are constructors and enum-like
-      // objects, which is what the pattern allows through as unused args.
       'no-unused-vars': ['error', {
         varsIgnorePattern: '^[A-Z_]',
         argsIgnorePattern: '^_',
@@ -34,8 +32,6 @@ export default [
 
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
-      // Catches the class of bug this rewrite exists to remove: a failure that
-      // is swallowed and never surfaced to the person who caused it.
       'no-empty': ['error', { allowEmptyCatch: false }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
