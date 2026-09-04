@@ -675,7 +675,7 @@ function RefundDialog({ order, onClose, onConfirm }) {
         {error && <InlineNotice tone="danger" title="Could not record">{error}</InlineNotice>}
 
         <InlineNotice tone="warning" title="This records the decision — it does not move money">
-          SwiftBuy has no payout rail, so the actual refund is arranged between the seller and the
+          SHOP MUMU has no payout rail, so the actual refund is arranged between the seller and the
           customer. This marks the payment refunded, updates the order, and writes an audit entry.
         </InlineNotice>
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DB="${SWIFTBUY_TEST_DB:-swiftbuy_test}"
+DB="${SHOP_MUMU_TEST_DB:-shop_mumu_test}"
 PSQL=(psql -v ON_ERROR_STOP=1 -X -q --set=QUIET=1)
 
 export PGUSER="${PGUSER:-postgres}"

@@ -6,7 +6,7 @@ import * as Icon from '../components/Icons'
 
 export default function AuthLayout({ title, subtitle, children, footer, width = 440 }) {
   useEffect(() => {
-    document.title = title ? `${title} · SwiftBuy` : 'SwiftBuy'
+    document.title = title ? `${title} · SHOP MUMU` : 'SHOP MUMU'
   }, [title])
 
   return (
@@ -24,7 +24,7 @@ export default function AuthLayout({ title, subtitle, children, footer, width = 
           <Link
             to="/"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}
-            aria-label="SwiftBuy home"
+            aria-label="SHOP MUMU home"
           >
             <span
               style={{
@@ -40,7 +40,7 @@ export default function AuthLayout({ title, subtitle, children, footer, width = 
                 letterSpacing: '-0.02em',
               }}
             >
-              SwiftBuy
+              SHOP MUMU
             </span>
           </Link>
           <h1 style={{ fontSize: '1.25rem', marginTop: 18 }}>{title}</h1>

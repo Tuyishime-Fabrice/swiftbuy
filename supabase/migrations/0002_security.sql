@@ -421,7 +421,7 @@ begin
       when 'suspended' then 'Your store has been suspended'
       else 'Your store status changed' end,
     coalesce(p_reason, case p_status
-      when 'approved' then 'You can now list products on SwiftBuy.'
+      when 'approved' then 'You can now list products on SHOP MUMU.'
       else null end),
     case when p_status = 'approved' then '/seller' else '/sell/apply' end);
 

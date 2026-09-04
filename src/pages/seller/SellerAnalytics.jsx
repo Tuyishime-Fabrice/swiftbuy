@@ -116,7 +116,7 @@ export default function SellerAnalytics() {
       <InlineNotice tone="info" title="What these numbers count">
         <strong>Settled</strong> figures come only from payments you have confirmed receiving.
         <strong> Ordered</strong> figures include orders that have not been paid for yet. The
-        commission rate is set by SwiftBuy and is currently{' '}
+        commission rate is set by SHOP MUMU and is currently{' '}
         {((settings?.commissionRateBps ?? 0) / 100).toFixed(2)}%.
       </InlineNotice>
 

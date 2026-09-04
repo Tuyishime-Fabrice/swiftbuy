@@ -466,7 +466,7 @@ function PaymentDialog({ order, onClose, onDone }) {
         <InlineNotice tone="info" title="This does not mark the order paid">
           {cashOnDelivery
             ? 'The seller marks the order paid once they receive the cash on delivery.'
-            : 'SwiftBuy passes your reference to the seller. They confirm it from their own account, and only then does the order show as paid.'}
+            : 'SHOP MUMU passes your reference to the seller. They confirm it from their own account, and only then does the order show as paid.'}
         </InlineNotice>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -622,13 +622,13 @@ function DisputeDialog({ target, onClose, onDone }) {
             maxLength={2000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the problem so the seller and SwiftBuy can look into it."
+            placeholder="Describe the problem so the seller and SHOP MUMU can look into it."
           />
         </Field>
 
         <InlineNotice tone="info" title="What happens next">
-          The seller is notified and can reply. A SwiftBuy administrator reviews the case and
-          decides the outcome. Any refund is recorded by SwiftBuy — it is not automatic.
+          The seller is notified and can reply. A SHOP MUMU administrator reviews the case and
+          decides the outcome. Any refund is recorded by SHOP MUMU — it is not automatic.
         </InlineNotice>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

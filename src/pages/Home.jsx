@@ -330,7 +330,7 @@ function Hero({ searchDraft, onSearchChange, onClear, signedIn }) {
         }}
       >
         Every store is reviewed before it can list. Every price and total is calculated by
-        SwiftBuy, not by the seller. Pay with Mobile Money, bank transfer, or cash on delivery.
+        SHOP MUMU, not by the seller. Pay with Mobile Money, bank transfer, or cash on delivery.
       </p>
 
       <form
@@ -365,7 +365,7 @@ function Hero({ searchDraft, onSearchChange, onClear, signedIn }) {
       {!signedIn && (
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 22, flexWrap: 'wrap' }}>
           <Link to="/register" className="btn btn-primary">Create an account</Link>
-          <Link to="/register?intent=sell" className="btn btn-outline">Sell on SwiftBuy</Link>
+          <Link to="/register?intent=sell" className="btn btn-outline">Sell on SHOP MUMU</Link>
         </div>
       )}
 
@@ -376,7 +376,7 @@ function Hero({ searchDraft, onSearchChange, onClear, signedIn }) {
         }}
       >
         <TrustPoint icon={Icon.Shield}>Sellers reviewed before listing</TrustPoint>
-        <TrustPoint icon={Icon.Receipt}>Totals calculated by SwiftBuy</TrustPoint>
+        <TrustPoint icon={Icon.Receipt}>Totals calculated by SHOP MUMU</TrustPoint>
         <TrustPoint icon={Icon.Star}>Reviews from delivered orders only</TrustPoint>
       </ul>
     </motion.section>
@@ -462,14 +462,14 @@ function FilterControls({ categories, category, sort, maxPrice, inStock, onChang
 function HowItWorks() {
   const steps = [
     { icon: Icon.Search, title: 'Find it', body: 'Browse verified stores and compare prices in Rwandan francs.' },
-    { icon: Icon.Cart, title: 'Order it', body: 'SwiftBuy calculates the total from live prices and checks stock before confirming.' },
+    { icon: Icon.Cart, title: 'Order it', body: 'SHOP MUMU calculates the total from live prices and checks stock before confirming.' },
     { icon: Icon.Shield, title: 'Pay safely', body: 'Pay the seller by MoMo, bank transfer or on delivery. Payment only counts once the seller confirms it.' },
     { icon: Icon.Truck, title: 'Track it', body: 'Follow each seller’s part of your order from confirmation to delivery.' },
   ]
 
   return (
     <section style={{ marginTop: 56 }} aria-labelledby="how-it-works">
-      <h2 id="how-it-works" style={{ textAlign: 'center', marginBottom: 8 }}>How SwiftBuy works</h2>
+      <h2 id="how-it-works" style={{ textAlign: 'center', marginBottom: 8 }}>How SHOP MUMU works</h2>
       <p
         style={{
           textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9375rem',

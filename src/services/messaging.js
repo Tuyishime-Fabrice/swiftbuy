@@ -93,7 +93,7 @@ export const ChatService = {
       .neq('sender_id', userId)
       .is('read_at', null)
 
-    if (error && import.meta.env.DEV) console.warn('[swiftbuy] mark read:', error.message)
+    if (error && import.meta.env.DEV) console.warn('[shop-mumu] mark read:', error.message)
   },
 
   subscribe(conversationId, onMessage) {

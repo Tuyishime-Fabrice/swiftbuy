@@ -238,7 +238,7 @@ export default function Cart() {
           </div>
 
           <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', marginTop: 8 }}>
-            SwiftBuy recalculates this from live prices when you place the order, so what you are
+            SHOP MUMU recalculates this from live prices when you place the order, so what you are
             charged always matches the catalogue.
           </p>
 

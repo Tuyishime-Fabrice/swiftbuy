@@ -112,7 +112,7 @@ describe('ProtectedRoute', () => {
 
     it('offers the application to a customer who has never applied', () => {
       guarded(null)
-      expect(screen.getByText(/do not sell on SwiftBuy yet/i)).toBeInTheDocument()
+      expect(screen.getByText(/do not sell on SHOP MUMU yet/i)).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /apply to sell/i })).toHaveAttribute('href', '/sell/apply')
       expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
     })

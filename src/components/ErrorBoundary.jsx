@@ -11,7 +11,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[swiftbuy] render error:', error, info?.componentStack)
+    console.error('[shop-mumu] render error:', error, info?.componentStack)
   }
 
   render() {

@@ -7,7 +7,7 @@ import * as Icon from '../components/Icons'
 
 export default function PageShell({ title, children, footer = true, width = 'default' }) {
   useEffect(() => {
-    document.title = title ? `${title} · SwiftBuy` : 'SwiftBuy'
+    document.title = title ? `${title} · SHOP MUMU` : 'SHOP MUMU'
   }, [title])
 
   const containerClass =
@@ -34,7 +34,7 @@ export default function PageShell({ title, children, footer = true, width = 'def
 
 export function BarePageShell({ title, children }) {
   useEffect(() => {
-    document.title = title ? `${title} · SwiftBuy` : 'SwiftBuy'
+    document.title = title ? `${title} · SHOP MUMU` : 'SHOP MUMU'
   }, [title])
 
   return (
@@ -75,7 +75,7 @@ export function SiteFooter() {
               >
                 <Icon.Bolt size={14} />
               </span>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}>SwiftBuy</span>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}>SHOP MUMU</span>
             </div>
             <p style={{ color: 'var(--text-subtle)', fontSize: '0.8125rem', maxWidth: 260 }}>
               A marketplace for Rwandan sellers and the people who buy from them.
@@ -107,7 +107,7 @@ export function SiteFooter() {
             color: 'var(--text-subtle)', fontSize: '0.8125rem',
           }}
         >
-          <p>© {year} SwiftBuy Rwanda</p>
+          <p>© {year} SHOP MUMU Rwanda</p>
           <p>Prices in Rwandan francs (RWF)</p>
         </div>
       </div>

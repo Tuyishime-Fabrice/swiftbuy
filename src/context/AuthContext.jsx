@@ -3,7 +3,7 @@ import { supabase, isConfigured } from '../lib/supabase'
 import { classifyError } from '../lib/errors'
 import { AuthContext } from './auth-context'
 
-const THEME_KEY = 'swiftbuy.theme'
+const THEME_KEY = 'shop-mumu.theme'
 
 function readStored(key) {
   try {
@@ -181,7 +181,7 @@ export function AuthProvider({ children }) {
       redirectTo: `${window.location.origin}/reset-password`,
     })
 
-    if (error && import.meta.env.DEV) console.warn('[swiftbuy] password reset:', error.message)
+    if (error && import.meta.env.DEV) console.warn('[shop-mumu] password reset:', error.message)
     return { ok: true }
   }, [])
 

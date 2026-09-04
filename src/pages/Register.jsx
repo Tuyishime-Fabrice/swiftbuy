@@ -77,7 +77,7 @@ export default function Register() {
         {formError && <InlineNotice tone="danger" title="Could not create your account">{formError}</InlineNotice>}
 
         {wantsToSell && (
-          <InlineNotice tone="info" title="First, your SwiftBuy account">
+          <InlineNotice tone="info" title="First, your SHOP MUMU account">
             Everyone starts with a customer account. Once you are signed in we will take you
             straight to the seller application, where an administrator reviews your store before
             it goes live.
@@ -134,7 +134,7 @@ export default function Register() {
       {!wantsToSell && (
         <div style={{ marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 10 }}>
-            Want to sell on SwiftBuy? Create your account first — you can apply for a store from
+            Want to sell on SHOP MUMU? Create your account first — you can apply for a store from
             it at any time, and you keep shopping either way.
           </p>
           <Link to="/register?intent=sell" className="btn btn-outline btn-sm">

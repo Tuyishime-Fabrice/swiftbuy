@@ -92,7 +92,7 @@ export default function StorePage() {
         <EmptyState
           icon={Icon.Store}
           title="This store is not available"
-          description="It may not be approved yet, or it may no longer be active on SwiftBuy."
+          description="It may not be approved yet, or it may no longer be active on SHOP MUMU."
           action={<Link to="/" className="btn btn-primary">Back to the shop</Link>}
         />
       </PageShell>
@@ -128,7 +128,7 @@ export default function StorePage() {
           <h1 style={{ fontSize: '1.35rem' }}>{store?.storeName}</h1>
           <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="badge badge-success">
-              <Icon.Shield size={11} /> Reviewed by SwiftBuy
+              <Icon.Shield size={11} /> Reviewed by SHOP MUMU
             </span>
             <span style={{ color: 'var(--text-subtle)', fontSize: '0.8125rem' }}>
               {result.total} product{result.total === 1 ? '' : 's'}
@@ -155,7 +155,7 @@ export default function StorePage() {
 
       <div style={{ marginBottom: 20 }}>
         <InlineNotice tone="info" title="What “reviewed” means here">
-          A SwiftBuy administrator checked this store's application before it was allowed to list
+          A SHOP MUMU administrator checked this store's application before it was allowed to list
           products. It is not a guarantee of any individual product.
         </InlineNotice>
       </div>

@@ -93,7 +93,7 @@ export default function SellerStore() {
           <div style={{ marginTop: 14 }}>
             <InlineNotice
               tone={store.status === 'approved' ? 'info' : 'warning'}
-              title="Note from SwiftBuy"
+              title="Note from SHOP MUMU"
             >
               {store.statusReason}
             </InlineNotice>
@@ -134,7 +134,7 @@ export default function SellerStore() {
 
         <h2 style={{ fontSize: '1rem', marginTop: 8 }}>Payment details</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: -8 }}>
-          Customers see these when they pay for an order. SwiftBuy does not hold the money —
+          Customers see these when they pay for an order. SHOP MUMU does not hold the money —
           it goes straight to you, and you confirm each payment from the orders page.
         </p>
 

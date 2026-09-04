@@ -228,7 +228,7 @@ export default function ProductDetail() {
                 </Link>
                 {product.store.status === 'approved' && (
                   <p style={{ color: 'var(--success)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Icon.Shield size={12} /> Reviewed by SwiftBuy
+                    <Icon.Shield size={12} /> Reviewed by SHOP MUMU
                   </p>
                 )}
               </div>

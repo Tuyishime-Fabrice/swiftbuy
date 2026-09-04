@@ -50,10 +50,10 @@ export default function Login() {
   return (
     <AuthLayout
       title="Sign in"
-      subtitle="Welcome back to SwiftBuy"
+      subtitle="Welcome back to SHOP MUMU"
       footer={
         <>
-          New to SwiftBuy?{' '}
+          New to SHOP MUMU?{' '}
           <Link to="/register" style={{ color: 'var(--accent-soft)', fontWeight: 600 }}>
             Create an account
           </Link>

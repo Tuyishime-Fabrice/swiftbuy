@@ -320,7 +320,7 @@ function PaymentStep({ items, value, onChange, onBack, onNext }) {
       <h2 style={{ fontSize: '1rem' }}>How would you like to pay?</h2>
 
       <InlineNotice tone="info" title="Payment is confirmed by the seller">
-        SwiftBuy does not process card payments. You pay the seller directly, tell us the
+        SHOP MUMU does not process card payments. You pay the seller directly, tell us the
         reference, and the order is only marked paid once the seller confirms the money arrived.
       </InlineNotice>
 
@@ -444,7 +444,7 @@ function ReviewStep({ items, delivery, paymentProvider, subtotal, deliveryFee, p
         </dl>
 
         <p style={{ color: 'var(--text-subtle)', fontSize: '0.75rem', marginTop: 8 }}>
-          SwiftBuy recalculates this total from live prices as your order is created. If anything
+          SHOP MUMU recalculates this total from live prices as your order is created. If anything
           has changed, the order will show the real figure and nothing is charged before you pay.
         </p>
       </section>

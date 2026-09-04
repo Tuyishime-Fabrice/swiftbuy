@@ -363,7 +363,7 @@ function VerifyPaymentDialog({ order, onClose, onDone }) {
         </div>
 
         <InlineNotice tone="warning" title="Check before you confirm">
-          Confirming marks this order paid across SwiftBuy and counts towards your settled
+          Confirming marks this order paid across SHOP MUMU and counts towards your settled
           earnings. Only confirm once you can see the money in your own account.
         </InlineNotice>
 
@@ -430,7 +430,7 @@ function RespondToCaseDialog({ dispute, onClose, onDone }) {
   const submit = async (event) => {
     event.preventDefault()
     if (reply.trim().length < 5) {
-      setError('Please write a reply for the customer and SwiftBuy to read.')
+      setError('Please write a reply for the customer and SHOP MUMU to read.')
       return
     }
 
@@ -474,8 +474,8 @@ function RespondToCaseDialog({ dispute, onClose, onDone }) {
           />
         </Field>
 
-        <InlineNotice tone="info" title="A SwiftBuy administrator decides the outcome">
-          Your reply is shown to the customer and to SwiftBuy, who resolve the case.
+        <InlineNotice tone="info" title="A SHOP MUMU administrator decides the outcome">
+          Your reply is shown to the customer and to SHOP MUMU, who resolve the case.
         </InlineNotice>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

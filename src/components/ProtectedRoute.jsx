@@ -45,7 +45,7 @@ function SellerStatusNotice({ status, reason }) {
     return (
       <EmptyState
         icon={Icon.Store}
-        title="You do not sell on SwiftBuy yet"
+        title="You do not sell on SHOP MUMU yet"
         description="Selling is something you apply for. Tell us about your store, attach a verification document, and an administrator will review it."
         action={<Link to="/sell/apply" className="btn btn-primary">Apply to sell</Link>}
       />
@@ -58,7 +58,7 @@ function SellerStatusNotice({ status, reason }) {
         <EmptyState
           icon={Icon.Clock}
           title="Your application is awaiting review"
-          description="A SwiftBuy administrator is checking your store details and verification documents. You will be notified as soon as there is a decision, and the seller tools open up then."
+          description="A SHOP MUMU administrator is checking your store details and verification documents. You will be notified as soon as there is a decision, and the seller tools open up then."
           action={<Link to="/sell/apply" className="btn btn-outline">View my application</Link>}
         />
       </div>
@@ -71,7 +71,7 @@ function SellerStatusNotice({ status, reason }) {
         <EmptyState
           icon={Icon.Alert}
           title="Your seller application was not approved"
-          description="You can still shop on SwiftBuy with this account, and you can correct your details and apply again."
+          description="You can still shop on SHOP MUMU with this account, and you can correct your details and apply again."
           action={<Link to="/sell/apply" className="btn btn-primary">Review and apply again</Link>}
         />
         {reason && <InlineNotice tone="warning" title="Reason given">{reason}</InlineNotice>}
@@ -85,7 +85,7 @@ function SellerStatusNotice({ status, reason }) {
         <EmptyState
           icon={Icon.Alert}
           title="Your store is suspended"
-          description="Your listings have been hidden from the marketplace. Your customer account is unaffected. Contact SwiftBuy support to resolve this."
+          description="Your listings have been hidden from the marketplace. Your customer account is unaffected. Contact SHOP MUMU support to resolve this."
         />
         {reason && <InlineNotice tone="warning" title="Reason given">{reason}</InlineNotice>}
       </div>
@@ -96,7 +96,7 @@ function SellerStatusNotice({ status, reason }) {
     <EmptyState
       icon={Icon.Store}
       title="Store not available"
-      description="We could not read your store's status. Please contact SwiftBuy support."
+      description="We could not read your store's status. Please contact SHOP MUMU support."
     />
   )
 }

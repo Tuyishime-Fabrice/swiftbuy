@@ -193,7 +193,7 @@ export default function Profile() {
       <div style={{ marginTop: 16 }}>
         <InlineNotice tone="info" title="About your email and role">
           Your email address is how you sign in and is changed through account recovery, not here.
-          Your role on SwiftBuy is set by the platform — it cannot be changed from this page, and
+          Your role on SHOP MUMU is set by the platform — it cannot be changed from this page, and
           the database refuses any attempt to do so.
         </InlineNotice>
       </div>

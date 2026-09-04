@@ -143,7 +143,7 @@ export default function SellerProducts() {
           description={
             search
               ? 'Try a different search term.'
-              : 'Add your first product and it will appear on the SwiftBuy storefront straight away.'
+              : 'Add your first product and it will appear on the SHOP MUMU storefront straight away.'
           }
           action={
             !search && (

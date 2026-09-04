@@ -15,7 +15,7 @@ const LINKS = [
 
 export default function SellerLayout({ title, children }) {
   useEffect(() => {
-    document.title = title ? `${title} · SwiftBuy Seller` : 'SwiftBuy Seller'
+    document.title = title ? `${title} · SHOP MUMU Seller` : 'SHOP MUMU Seller'
   }, [title])
 
   return (

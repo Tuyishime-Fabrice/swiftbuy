@@ -15,7 +15,7 @@ const FALLBACK = {
   [ErrorKind.VALIDATION]: 'Please check the details you entered.',
   [ErrorKind.NOT_FOUND]: "We couldn't find that.",
   [ErrorKind.CONFLICT]: 'That has already been done.',
-  [ErrorKind.NETWORK]: "We couldn't reach SwiftBuy. Check your connection and try again.",
+  [ErrorKind.NETWORK]: "We couldn't reach SHOP MUMU. Check your connection and try again.",
   [ErrorKind.RULE]: "That isn't possible right now.",
   [ErrorKind.SERVER]: 'Something went wrong on our side. Please try again.',
 }
@@ -50,7 +50,7 @@ export function handleError(error, context) {
   const classified = classifyError(error)
   if (!classified) return null
   if (import.meta.env.DEV) {
-    console.error(`[swiftbuy] ${context}:`, classified.code ?? '', classified.raw ?? error)
+    console.error(`[shop-mumu] ${context}:`, classified.code ?? '', classified.raw ?? error)
   }
   return classified
 }

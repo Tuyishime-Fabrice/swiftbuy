@@ -142,7 +142,7 @@ export default function Navbar() {
           <Link
             to="/"
             style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}
-            aria-label="SwiftBuy home"
+            aria-label="SHOP MUMU home"
           >
             <span
               style={{
@@ -155,10 +155,10 @@ export default function Navbar() {
             <span
               style={{
                 fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.0625rem',
-                letterSpacing: '-0.02em', color: 'var(--text)',
+                letterSpacing: '-0.02em', color: 'var(--text)', whiteSpace: 'nowrap',
               }}
             >
-              SwiftBuy
+              SHOP MUMU
             </span>
           </Link>
 
@@ -277,7 +277,7 @@ export default function Navbar() {
                         </>}
                         {isCustomer && (
                           <MenuLink to="/sell/apply" icon={Icon.Store}>
-                            {!hasSellerApplication ? 'Sell on SwiftBuy'
+                            {!hasSellerApplication ? 'Sell on SHOP MUMU'
                               : isApprovedSeller ? 'My seller application'
                               : `Seller application · ${sellerStatus}`}
                           </MenuLink>
@@ -395,7 +395,7 @@ export default function Navbar() {
 
                 {isCustomer && (
                   <DrawerLink to="/sell/apply" icon={Icon.Store} onNavigate={closeDrawer}>
-                    {!hasSellerApplication ? 'Sell on SwiftBuy'
+                    {!hasSellerApplication ? 'Sell on SHOP MUMU'
                       : isApprovedSeller ? 'My seller application'
                       : `Seller application · ${sellerStatus}`}
                   </DrawerLink>

@@ -45,13 +45,13 @@ begin
 
   if v_existing.id is not null then
     if v_existing.status = 'approved' then
-      raise exception 'You already sell on SwiftBuy' using errcode = 'P0001';
+      raise exception 'You already sell on SHOP MUMU' using errcode = 'P0001';
     end if;
     if v_existing.status = 'pending' then
       raise exception 'Your application is already under review' using errcode = 'P0001';
     end if;
     if v_existing.status = 'suspended' then
-      raise exception 'Your store is suspended. Please contact SwiftBuy support.'
+      raise exception 'Your store is suspended. Please contact SHOP MUMU support.'
         using errcode = '42501';
     end if;
   end if;
@@ -84,7 +84,7 @@ begin
 
   perform public.notify(
     v_user, 'seller.applied', 'Your seller application has been submitted',
-    'A SwiftBuy administrator will review it and let you know the outcome.',
+    'A SHOP MUMU administrator will review it and let you know the outcome.',
     '/sell/apply');
 
   perform public.notify(

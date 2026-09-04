@@ -1,4 +1,4 @@
-# SwiftBuy
+# SHOP MUMU
 
 A multi-seller marketplace for Rwanda: customers browse verified stores, sellers
 manage their own catalogue and fulfilment, and administrators moderate the
@@ -159,7 +159,7 @@ reflects the real one — which is why the cart calls its figure an estimate.
 
 ### Payment
 
-SwiftBuy does not process card payments and does not hold anyone's money.
+SHOP MUMU does not process card payments and does not hold anyone's money.
 Buyers pay sellers directly, and the flow is honest about what that means:
 
 ```
@@ -416,7 +416,7 @@ log.
   seller. Integrating MTN MoMo, Airtel Money or a card processor means writing
   an Edge Function that verifies the provider's webhook signature and calls that
   function with the service role.
-- **Seller payouts.** SwiftBuy never holds the money, so there is nothing to pay
+- **Seller payouts.** SHOP MUMU never holds the money, so there is nothing to pay
   out. `commissions` and the `seller_earnings` view record what the platform is
   owed; collecting it is a business process, not a code path.
 - **Refund execution.** An admin *records* a refund. Moving the money is

@@ -43,8 +43,8 @@ export default function SellerApply() {
 
   if (status === 'loading') {
     return (
-      <PageShell title="Sell on SwiftBuy" width="narrow">
-        <PageHeader title="Sell on SwiftBuy" />
+      <PageShell title="Sell on SHOP MUMU" width="narrow">
+        <PageHeader title="Sell on SHOP MUMU" />
         <ListSkeleton count={2} height={220} />
       </PageShell>
     )
@@ -52,17 +52,17 @@ export default function SellerApply() {
 
   if (status === 'error') {
     return (
-      <PageShell title="Sell on SwiftBuy" width="narrow">
-        <PageHeader title="Sell on SwiftBuy" />
+      <PageShell title="Sell on SHOP MUMU" width="narrow">
+        <PageHeader title="Sell on SHOP MUMU" />
         <ErrorState title="We couldn't load your application" description={error} onRetry={retry} />
       </PageShell>
     )
   }
 
   return (
-    <PageShell title="Sell on SwiftBuy" width="narrow">
+    <PageShell title="Sell on SHOP MUMU" width="narrow">
       <PageHeader
-        title="Sell on SwiftBuy"
+        title="Sell on SHOP MUMU"
         subtitle={
           application
             ? 'Your application and where it has got to'
@@ -104,7 +104,7 @@ export default function SellerApply() {
             action={<Link to="/seller" className="btn btn-primary btn-sm">Open seller tools</Link>}
           >
             You can list products, manage orders and message customers. Your customer account is
-            unchanged — you can still shop on SwiftBuy exactly as before.
+            unchanged — you can still shop on SHOP MUMU exactly as before.
           </InlineNotice>
         </div>
       )}
@@ -220,7 +220,7 @@ function ApplicationStatus({ application, documentCount }) {
         )}
         {application.status === 'suspended' && (
           <InlineNotice tone="danger" title="Store suspended">
-            {application.statusReason ?? 'Contact SwiftBuy support to resolve this.'}
+            {application.statusReason ?? 'Contact SHOP MUMU support to resolve this.'}
           </InlineNotice>
         )}
         {application.status === 'approved' && (
@@ -353,7 +353,7 @@ function ApplicationForm({ application, defaultName, onSubmitted }) {
       <div>
         <h3 style={{ fontSize: '0.9375rem', marginBottom: 4 }}>How customers pay you</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 12 }}>
-          SwiftBuy does not hold your money — buyers pay you directly and you confirm each payment.
+          SHOP MUMU does not hold your money — buyers pay you directly and you confirm each payment.
           You can fill these in later from your store settings.
         </p>
 
@@ -383,7 +383,7 @@ function ApplicationForm({ application, defaultName, onSubmitted }) {
       </div>
 
       <InlineNotice tone="info" title="What happens when you submit">
-        Your application is created as <strong>pending</strong> and goes to a SwiftBuy
+        Your application is created as <strong>pending</strong> and goes to a SHOP MUMU
         administrator. You can attach verification documents after submitting, and you will be
         notified of the decision.
       </InlineNotice>
@@ -468,7 +468,7 @@ function DocumentSection({ sellerId, documents, editable, onChanged }) {
       <h2 style={{ fontSize: '1rem', marginBottom: 4 }}>Verification documents</h2>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 14 }}>
         Attach something an administrator can use to verify your store, such as a business or
-        licence document. Files are private: only you and SwiftBuy administrators can open them.
+        licence document. Files are private: only you and SHOP MUMU administrators can open them.
       </p>
 
       {documents.length === 0 ? (
@@ -584,7 +584,7 @@ function DocumentSection({ sellerId, documents, editable, onChanged }) {
         {removing && (
           <ConfirmDialog
             title="Remove this document?"
-            message="It will be deleted from your application and from SwiftBuy's storage. You can attach a different one afterwards."
+            message="It will be deleted from your application and from SHOP MUMU's storage. You can attach a different one afterwards."
             confirmLabel="Remove document"
             onConfirm={confirmRemove}
             onCancel={() => setRemoving(null)}

@@ -14,7 +14,7 @@ export default function SetupRequired() {
           <Icon.Settings size={22} />
         </div>
 
-        <h1 style={{ fontSize: '1.35rem', marginBottom: 8 }}>SwiftBuy is not connected yet</h1>
+        <h1 style={{ fontSize: '1.35rem', marginBottom: 8 }}>SHOP MUMU is not connected yet</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
           The app needs a Supabase project before it can sign anyone in or show a catalogue.
           Add these to a <code>.env</code> file in the project root and restart the dev server:

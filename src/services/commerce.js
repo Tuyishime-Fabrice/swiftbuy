@@ -416,7 +416,7 @@ export const ReviewService = {
       rating: r.rating,
       comment: r.comment,
       createdAt: r.created_at,
-      authorName: r.profiles?.full_name ?? 'SwiftBuy customer',
+      authorName: r.profiles?.full_name ?? 'SHOP MUMU customer',
       authorId: r.user_id,
     }))
   },
