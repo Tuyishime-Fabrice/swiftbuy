@@ -82,7 +82,7 @@ export const SellerService = {
       .select(`
         id, store_name, description, status, status_reason,
         momo_number, momo_name, bank_name, bank_account, created_at, approved_at,
-        profiles ( full_name, email )
+        profiles!sellers_id_fkey ( full_name, email )
       `)
       .eq('id', sellerId)
       .maybeSingle()
@@ -123,7 +123,7 @@ export const SellerService = {
       .from('sellers')
       .select(`
         id, store_name, status, status_reason, momo_number, bank_name,
-        created_at, approved_at, profiles ( full_name, email, suspended )
+        created_at, approved_at, profiles!sellers_id_fkey ( full_name, email, suspended )
       `)
       .order('created_at', { ascending: false })
     assertOk(error, 'load sellers')

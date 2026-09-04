@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase'
 import { assertOk } from '../lib/errors'
 
+let channelSequence = 0
+
+function uniqueTopic(prefix) {
+  channelSequence += 1
+  return `${prefix}:${channelSequence}`
+}
+
 export const ChatService = {
 
   async openWithSeller(sellerId) {
@@ -91,7 +98,7 @@ export const ChatService = {
 
   subscribe(conversationId, onMessage) {
     const channel = supabase
-      .channel(`conversation:${conversationId}`)
+      .channel(uniqueTopic(`conversation:${conversationId}`))
       .on(
         'postgres_changes',
         {
@@ -146,7 +153,7 @@ export const NotificationService = {
 
   subscribe(userId, onNotification) {
     const channel = supabase
-      .channel(`notifications:${userId}`)
+      .channel(uniqueTopic(`notifications:${userId}`))
       .on(
         'postgres_changes',
         {
