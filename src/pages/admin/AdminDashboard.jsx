@@ -155,7 +155,7 @@ function OverviewTab() {
           tone="accent"
           icon={Icon.Scale}
         />
-        <StatCard label="Orders" value={data.orderTotal} icon={Icon.Package} />
+        <StatCard label="Ordersddd" value={data.orderTotal} icon={Icon.Package} />
         <StatCard
           label="Awaiting payment check"
           value={derived.awaitingPayment}
