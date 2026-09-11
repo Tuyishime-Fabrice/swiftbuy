@@ -39,7 +39,7 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState('overview')
 
   return (
-    <PageShell title="Admin">
+    <PageShell title="Adminiiii">
       <PageHeader
         title={isSuperAdmin ? 'Platform administration' : 'Admin dashboard'}
         subtitle={
